@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { redis, PROFIT, getUserById, deductBalance } from '@/lib/redis';
+import { redis, PROFIT, getUserById, deductBalance, updateProfile } from '@/lib/redis';
 
 const BASE = 'https://www.rumahotp.io/api';
 const ENDPOINTS = {
@@ -31,7 +31,31 @@ export async function POST(request) {
 
   if (endpoint === 'balance') {
     if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
-    return NextResponse.json({ success: true, data: { balance: Number(user.balance || 0), email: user.email } });
+    return NextResponse.json({
+      success: true,
+      data: {
+        balance: Number(user.balance || 0),
+        email: user.email,
+        username: user.username || '',
+        hasPassword: !!user.passwordHash,
+      }
+    });
+  }
+
+  if (endpoint === 'profile_update') {
+    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+    const updates = {};
+    if (payload.username !== undefined) updates.username = payload.username.trim();
+    await updateProfile(user.email, updates);
+    return NextResponse.json({ success: true, msg: 'Profil berhasil disimpan' });
+  }
+
+  if (endpoint === 'logout') {
+    const token = request.cookies.get('walz_session')?.value;
+    if (token) await redis.del(`session:${token}`);
+    const res = NextResponse.json({ success: true });
+    res.cookies.set('walz_session', '', { maxAge: 0, path: '/' });
+    return res;
   }
 
   if (endpoint === 'services' || endpoint === 'countries') {
@@ -79,8 +103,8 @@ export async function POST(request) {
     const key = getApiKey(payload);
     const countryRes = await fetch(`${BASE}/v2/countries?service_id=${payload.service_id}`, { headers: { 'x-apikey': key } });
     const countryData = await countryRes.json();
-    const indo = countryData.data?.find(c => c.name.toLowerCase().includes('indonesia')) || countryData.data?.[0];
-    const provider = indo?.pricelist?.find(p => String(p.provider_id) === String(payload.provider_id)) || indo?.pricelist?.[0];
+    const targetCountry = countryData.data?.find(c => c.number_id === payload.number_id) || countryData.data?.[0];
+    const provider = targetCountry?.pricelist?.find(p => String(p.provider_id) === String(payload.provider_id)) || targetCountry?.pricelist?.[0];
     const basePrice = Number(provider?.price || 0);
     const sellPrice = basePrice + PROFIT;
 
