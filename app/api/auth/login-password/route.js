@@ -1,20 +1,24 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { getUserByEmail, createSession } from '@/lib/redis';
+import { getUserByEmail, getUserByUsername, createSession } from '@/lib/redis';
 
 export async function POST(request) {
-  const { email, password } = await request.json();
-  if (!email || !password) {
-    return NextResponse.json({ success: false, msg: 'Email dan password wajib diisi' });
+  const { identifier, password } = await request.json();
+  if (!identifier || !password) {
+    return NextResponse.json({ success: false, msg: 'Username/Email dan password wajib diisi' });
   }
 
-  const user = await getUserByEmail(email);
+  let user = await getUserByEmail(identifier);
   if (!user || !user.id) {
-    return NextResponse.json({ success: false, msg: 'Akun tidak ditemukan, gunakan OTP untuk daftar' });
+    user = await getUserByUsername(identifier);
+  }
+
+  if (!user || !user.id) {
+    return NextResponse.json({ success: false, msg: 'Akun tidak ditemukan' });
   }
 
   if (!user.passwordHash) {
-    return NextResponse.json({ success: false, msg: 'Password belum diatur, gunakan OTP untuk masuk' });
+    return NextResponse.json({ success: false, msg: 'Password belum diatur, silakan reset password' });
   }
 
   const match = await bcrypt.compare(password, user.passwordHash);
@@ -25,7 +29,7 @@ export async function POST(request) {
   const token = await createSession(user.id);
   const res = NextResponse.json({
     success: true,
-    user: { email: user.email, balance: Number(user.balance || 0) }
+    user: { email: user.email, balance: Number(user.balance || 0), username: user.username }
   });
   res.cookies.set('walz_session', token, {
     httpOnly: true,
