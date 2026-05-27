@@ -14,9 +14,18 @@ export async function POST(request) {
   const { email } = await request.json();
   if (!email) return NextResponse.json({ success: false, msg: 'Email tidak boleh kosong' });
 
+  const emailKey = email.toLowerCase();
+
+  const cooldownKey = `otp_cooldown:${emailKey}`;
+  const hasCooldown = await redis.get(cooldownKey);
+  if (hasCooldown) {
+    return NextResponse.json({ success: true });
+  }
+
   const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-  await redis.set(`otp:${email.toLowerCase()}`, code, { ex: 300 });
+  await redis.set(`otp:${emailKey}`, code, { ex: 300 });
+  await redis.set(cooldownKey, '1', { ex: 60 });
 
   try {
     await transporter.sendMail({
@@ -43,10 +52,10 @@ export async function POST(request) {
         </div>
       `,
     });
-
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('Email error:', err);
+    await redis.del(cooldownKey);
     return NextResponse.json({ success: false, msg: 'Gagal mengirim email, coba lagi' });
   }
 }
