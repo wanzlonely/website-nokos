@@ -11,7 +11,7 @@ async function getUser(request) {
 }
 
 export async function POST(request) {
-  const { currentPassword, newPassword } = await request.json();
+  const { currentPassword, newPassword, setupMode, username } = await request.json();
 
   if (!newPassword || newPassword.length < 6) {
     return NextResponse.json({ success: false, msg: 'Password minimal 6 karakter' });
@@ -22,8 +22,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
   }
 
-  // If user already has a password, verify the current one
-  if (user.passwordHash) {
+  if (user.passwordHash && !setupMode) {
     if (!currentPassword) {
       return NextResponse.json({ success: false, msg: 'Masukkan password saat ini' });
     }
@@ -34,7 +33,12 @@ export async function POST(request) {
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
-  await updateProfile(user.email, { passwordHash });
+  const updates = { passwordHash };
+  if (setupMode && username) {
+    updates.username = username.trim();
+  }
 
-  return NextResponse.json({ success: true, msg: 'Password berhasil disimpan' });
+  await updateProfile(user.email, updates);
+
+  return NextResponse.json({ success: true, msg: 'Data berhasil disimpan' });
 }
