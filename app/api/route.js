@@ -9,6 +9,7 @@ const ENDPOINTS = {
   order_status: '/v1/orders/get_status',
   deposit_create: '/v2/deposit/create',
   deposit_status: '/v2/deposit/get_status',
+  deposit_cancel: '/v1/deposit/cancel', // Endpoint Pembatalan Baru
 };
 
 function getApiKey(payload = {}) {
@@ -29,6 +30,7 @@ export async function POST(request) {
   const { endpoint, ...payload } = body;
   const user = await getUser(request);
 
+  // --- 1. ENDPOINT AUTH & PROFILE ---
   if (endpoint === 'balance') {
     if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
     return NextResponse.json({
@@ -58,19 +60,29 @@ export async function POST(request) {
     return res;
   }
 
+  // --- 2. ENDPOINT MAINTENANCE (H2H PPOB / GAME) ---
+  if (endpoint.startsWith('h2h_')) {
+    return NextResponse.json({ 
+      success: false, 
+      msg: 'Layanan PPOB dan Top Up Game saat ini sedang dalam masa maintenance sistem pusat.' 
+    });
+  }
+
+  // --- 3. ENDPOINT LAYANAN & NEGARA ---
   if (endpoint === 'services' || endpoint === 'countries') {
     const key = getApiKey(payload);
     const params = new URLSearchParams(payload);
     const url = `${BASE}${ENDPOINTS[endpoint]}${params.toString() ? '?' + params : ''}`;
     const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' }, cache: 'no-store' });
     const data = await r.json();
+    
     if (endpoint === 'countries' && Array.isArray(data?.data)) {
       data.data.forEach(c => {
         if (Array.isArray(c.pricelist)) {
           c.pricelist.forEach(p => {
             const base = Number(p.price) || 0;
             p.base_price = base;
-            p.price = base + PROFIT;
+            p.price = base + PROFIT; 
           });
         }
       });
@@ -80,10 +92,11 @@ export async function POST(request) {
 
   if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
 
+  // --- 4. ENDPOINT DEPOSIT ---
   if (endpoint === 'deposit_create') {
     const key = getApiKey({});
     const url = `${BASE}${ENDPOINTS.deposit_create}?amount=${payload.amount}&payment_id=qris`;
-    const r = await fetch(url, { headers: { 'x-apikey': key } });
+    const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
     if (data.success && data.data?.id) {
       await redis.hset(`deposit:${data.data.id}`, { userId: user.id, amount: Number(payload.amount), status: 'pending' });
@@ -94,7 +107,7 @@ export async function POST(request) {
   if (endpoint === 'deposit_status') {
     const key = getApiKey({});
     const url = `${BASE}${ENDPOINTS.deposit_status}?deposit_id=${payload.deposit_id}`;
-    const r = await fetch(url, { headers: { 'x-apikey': key } });
+    const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
     
     if (data.success && data.data && (data.data.status === 'success' || data.data.status === 'paid')) {
@@ -111,12 +124,26 @@ export async function POST(request) {
     return NextResponse.json(data);
   }
 
+  if (endpoint === 'deposit_cancel') {
+    const key = getApiKey({});
+    const url = `${BASE}${ENDPOINTS.deposit_cancel}?deposit_id=${payload.deposit_id}`;
+    const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
+    const data = await r.json();
+    
+    if (data.success) {
+      await redis.hset(`deposit:${payload.deposit_id}`, { status: 'canceled' });
+    }
+    return NextResponse.json(data);
+  }
+
+  // --- 5. ENDPOINT TRANSAKSI NOMOR VIRTUAL ---
   if (endpoint === 'order_create') {
     const key = getApiKey(payload);
-    const countryRes = await fetch(`${BASE}/v2/countries?service_id=${payload.service_id}`, { headers: { 'x-apikey': key } });
+    const countryRes = await fetch(`${BASE}/v2/countries?service_id=${payload.service_id}`, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const countryData = await countryRes.json();
-    const targetCountry = countryData.data?.find(c => c.number_id === payload.number_id) || countryData.data?.[0];
+    const targetCountry = countryData.data?.find(c => String(c.number_id) === String(payload.number_id)) || countryData.data?.[0];
     const provider = targetCountry?.pricelist?.find(p => String(p.provider_id) === String(payload.provider_id)) || targetCountry?.pricelist?.[0];
+    
     const basePrice = Number(provider?.price || 0);
     const sellPrice = basePrice + PROFIT;
 
@@ -127,7 +154,7 @@ export async function POST(request) {
     }
 
     const params = new URLSearchParams(payload);
-    const r = await fetch(`${BASE}${ENDPOINTS.order_create}?${params}`, { headers: { 'x-apikey': key } });
+    const r = await fetch(`${BASE}${ENDPOINTS.order_create}?${params}`, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
 
     if (data.success && data.data) {
@@ -144,7 +171,7 @@ export async function POST(request) {
   if (endpoint === 'order_status') {
     const key = getApiKey({});
     const url = `${BASE}${ENDPOINTS.order_status}?order_id=${payload.order_id}`;
-    const r = await fetch(url, { headers: { 'x-apikey': key } });
+    const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
     if (data.success && data.data?.price) {
       data.data.price = Number(data.data.price) + PROFIT;
