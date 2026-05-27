@@ -9,7 +9,8 @@ const ENDPOINTS = {
   order_status: '/v1/orders/get_status',
   deposit_create: '/v2/deposit/create',
   deposit_status: '/v2/deposit/get_status',
-  deposit_cancel: '/v1/deposit/cancel', // Endpoint Pembatalan Baru
+  deposit_cancel: '/v1/deposit/cancel',
+  h2h_product: '/v1/h2h/product',
 };
 
 function getApiKey(payload = {}) {
@@ -30,7 +31,6 @@ export async function POST(request) {
   const { endpoint, ...payload } = body;
   const user = await getUser(request);
 
-  // --- 1. ENDPOINT AUTH & PROFILE ---
   if (endpoint === 'balance') {
     if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
     return NextResponse.json({
@@ -60,15 +60,17 @@ export async function POST(request) {
     return res;
   }
 
-  // --- 2. ENDPOINT MAINTENANCE (H2H PPOB / GAME) ---
-  if (endpoint.startsWith('h2h_')) {
-    return NextResponse.json({ 
-      success: false, 
-      msg: 'Layanan PPOB dan Top Up Game saat ini sedang dalam masa maintenance sistem pusat.' 
-    });
+  if (endpoint === 'h2h_products') {
+    try {
+      const url = `${BASE}${ENDPOINTS.h2h_product}`;
+      const r = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
+      const data = await r.json();
+      return NextResponse.json(data);
+    } catch (e) {
+      return NextResponse.json({ success: false, msg: 'Sistem sedang maintenance' });
+    }
   }
 
-  // --- 3. ENDPOINT LAYANAN & NEGARA ---
   if (endpoint === 'services' || endpoint === 'countries') {
     const key = getApiKey(payload);
     const params = new URLSearchParams(payload);
@@ -92,14 +94,14 @@ export async function POST(request) {
 
   if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
 
-  // --- 4. ENDPOINT DEPOSIT ---
   if (endpoint === 'deposit_create') {
     const key = getApiKey({});
     const url = `${BASE}${ENDPOINTS.deposit_create}?amount=${payload.amount}&payment_id=qris`;
     const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
-    if (data.success && data.data?.id) {
-      await redis.hset(`deposit:${data.data.id}`, { userId: user.id, amount: Number(payload.amount), status: 'pending' });
+    if (data.success && data.data) {
+      const actualAmt = data.data.amount || data.data.total || payload.amount;
+      await redis.hset(`deposit:${data.data.id || data.data.deposit_id}`, { userId: user.id, amount: Number(actualAmt), status: 'pending' });
     }
     return NextResponse.json(data);
   }
@@ -136,7 +138,6 @@ export async function POST(request) {
     return NextResponse.json(data);
   }
 
-  // --- 5. ENDPOINT TRANSAKSI NOMOR VIRTUAL ---
   if (endpoint === 'order_create') {
     const key = getApiKey(payload);
     const countryRes = await fetch(`${BASE}/v2/countries?service_id=${payload.service_id}`, { headers: { 'x-apikey': key, accept: 'application/json' } });
