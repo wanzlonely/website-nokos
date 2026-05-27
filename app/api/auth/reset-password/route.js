@@ -23,12 +23,11 @@ export async function POST(request) {
   await updateProfile(email, { passwordHash });
   await redis.del(`reset:${resetToken}`);
 
-  // Auto-login after reset
   const token = await createSession(user.id);
   const res = NextResponse.json({
     success: true,
     msg: 'Password berhasil direset',
-    user: { email: user.email, balance: Number(user.balance || 0) }
+    user: { email: user.email, balance: Number(user.balance || 0), username: user.username }
   });
   res.cookies.set('walz_session', token, {
     httpOnly: true,
