@@ -119,6 +119,7 @@ export default function Page() {
 
   const [services, setServices] = useState([]);
   const [query, setQuery] = useState('');
+  const [countryQuery, setCountryQuery] = useState(''); // State Pencarian Negara
   const [loadingSvcs, setLoadingSvcs] = useState(true);
 
   const [selectedSvc, setSelectedSvc] = useState(null);
@@ -135,6 +136,7 @@ export default function Page() {
   const [qrisData, setQrisData] = useState(null);
   const [creatingQris, setCreatingQris] = useState(false);
   const [checkingDeposit, setCheckingDeposit] = useState(false);
+  const [cancelingDeposit, setCancelingDeposit] = useState(false);
   const [depositMsg, setDepositMsg] = useState(null);
   const [depositCooldown, setDepositCooldown] = useState(0);
 
@@ -250,7 +252,11 @@ export default function Page() {
   }, [depositCooldown]);
 
   useEffect(() => {
-    if (!showSheet) { setSelectedCountry(null); setCountries([]); }
+    if (!showSheet) { 
+      setSelectedCountry(null); 
+      setCountries([]); 
+      setCountryQuery(''); 
+    }
   }, [showSheet]);
 
   const startCountdown = () => {
@@ -436,6 +442,19 @@ export default function Page() {
     } else {
       setDepositMsg({ type: 'error', text: 'Pembayaran belum terdeteksi. Silakan coba lagi.' });
     }
+  };
+
+  const cancelDeposit = async () => {
+    if (!qrisData) return;
+    setCancelingDeposit(true);
+    const r = await api('deposit_cancel', { deposit_id: qrisData.id });
+    setCancelingDeposit(false);
+    
+    // Asumsikan pembatalan berhasil / memaksa keluar di front-end
+    setQrisData(null); 
+    setDepositAmount(''); 
+    setDepositMsg({ type: 'success', text: 'Transaksi pembayaran dibatalkan.' });
+    setTimeout(() => setDepositMsg(null), 3000);
   };
 
   const saveProfile = async () => {
@@ -682,6 +701,7 @@ export default function Page() {
   }
 
   const filteredSvcs = services.filter(s => s.service_name?.toLowerCase().includes(query.toLowerCase()));
+  const filteredCountries = countries.filter(c => c.name.toLowerCase().includes(countryQuery.toLowerCase()));
 
   return (
     <>
@@ -821,8 +841,8 @@ export default function Page() {
                 <button className="btn btn-success" onClick={checkDeposit} disabled={checkingDeposit}>
                   {checkingDeposit ? <><LoadingSpinner /> Mengecek...</> : '✅ Cek Status Pembayaran'}
                 </button>
-                <button className="btn btn-danger" onClick={() => { setQrisData(null); setDepositAmount(''); setDepositMsg(null); }}>
-                  ✖ Batalkan Transaksi
+                <button className="btn btn-danger" onClick={cancelDeposit} disabled={cancelingDeposit}>
+                  {cancelingDeposit ? <><LoadingSpinner /> Membatalkan...</> : '✖ Batalkan Transaksi'}
                 </button>
               </div>
             )}
@@ -927,10 +947,13 @@ export default function Page() {
             <div className="sheet-svc-icon">
               {selectedSvc?.service_img && <img src={selectedSvc.service_img} alt="" />}
             </div>
-            <div>
+            <div style={{ flex: 1 }}>
               <div className="sheet-svc-name">{selectedSvc?.service_name}</div>
               <div className="sheet-title">Pilih Negara</div>
             </div>
+          </div>
+          <div className="sheet-search">
+             <input type="text" placeholder="Cari negara (Contoh: Indonesia)" value={countryQuery} onChange={(e) => setCountryQuery(e.target.value)} />
           </div>
         </div>
         <div className="sheet-body">
@@ -939,13 +962,13 @@ export default function Page() {
               <LoadingSpinner />
               <p style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>Memuat negara...</p>
             </div>
-          ) : countries.length === 0 ? (
+          ) : filteredCountries.length === 0 ? (
             <div className="empty-state" style={{ padding: '32px 0' }}>
               <span className="icon">🌐</span>
-              <p>Tidak ada stok tersedia</p>
+              <p>Tidak ada stok untuk pencarian tersebut</p>
             </div>
           ) : (
-            countries.map(c => {
+            filteredCountries.map(c => {
               const cheapest = c.available[0];
               const totalStock = c.available.length;
               const isSelected = selectedCountry?.number_id === c.number_id;
