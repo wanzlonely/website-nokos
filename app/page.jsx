@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const api = async (endpoint, payload = {}) => {
   const res = await fetch('/api', {
@@ -24,6 +24,8 @@ const authApi = async (path, payload) => {
 
 const fmt = n => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 
+const OTP_DURATION = 300; // 5 menit dalam detik
+
 export default function Page() {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
@@ -38,6 +40,11 @@ export default function Page() {
   const [amount, setAmount] = useState('');
   const [tab, setTab] = useState('virtual');
   const [loading, setLoading] = useState(true);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const timerRef = useRef(null);
 
   useEffect(() => {
     api('balance').then(r => {
@@ -67,18 +74,71 @@ export default function Page() {
     });
   }, [step]);
 
+  // Countdown timer
+  useEffect(() => {
+    if (countdown <= 0) {
+      clearInterval(timerRef.current);
+      return;
+    }
+    timerRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current);
+  }, [countdown]);
+
+  const formatCountdown = (secs) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0');
+    const s = (secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   const requestOtp = async () => {
+    if (!email) return;
+    setSendingOtp(true);
+    setErrorMsg('');
     const r = await authApi('request-otp', { email });
-    if (r.success) setStep('otp');
+    setSendingOtp(false);
+    if (r.success) {
+      setStep('otp');
+      setOtp('');
+      setCountdown(OTP_DURATION); // mulai countdown 5 menit
+    } else {
+      setErrorMsg(r.msg || 'Gagal mengirim OTP, coba lagi');
+    }
+  };
+
+  const resendOtp = async () => {
+    setSendingOtp(true);
+    setErrorMsg('');
+    setOtp('');
+    const r = await authApi('request-otp', { email });
+    setSendingOtp(false);
+    if (r.success) {
+      setCountdown(OTP_DURATION);
+    } else {
+      setErrorMsg(r.msg || 'Gagal mengirim ulang OTP');
+    }
   };
 
   const verifyOtp = async () => {
+    if (otp.length !== 6) return;
+    setVerifying(true);
+    setErrorMsg('');
     const r = await authApi('verify-otp', { email, code: otp });
+    setVerifying(false);
     if (r.success) {
       setUser(r.user);
       setBalance(r.user.balance);
       setStep('app');
       api('balance').then(res => res.success && setBalance(res.data.balance));
+    } else {
+      setErrorMsg(r.msg || 'Kode OTP salah atau sudah expired');
     }
   };
 
@@ -119,15 +179,97 @@ export default function Page() {
       <div style={{ padding: 40, paddingTop: 100 }}>
         <div className="card"><div className="card-body">
           <h2 style={{ marginBottom: 20 }}>Masuk ke Walz Nexus</h2>
+
           {step === 'login' ? (
             <>
-              <div className="input-group"><label>Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nama@email.com" /></div>
-              <button className="btn-primary" onClick={requestOtp} disabled={!email}>Kirim OTP</button>
+              <div className="input-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setErrorMsg(''); }}
+                  placeholder="nama@email.com"
+                  onKeyDown={e => e.key === 'Enter' && !sendingOtp && email && requestOtp()}
+                />
+              </div>
+              {errorMsg && (
+                <p style={{ color: '#f85149', fontSize: 13, marginBottom: 12, marginTop: -4 }}>⚠️ {errorMsg}</p>
+              )}
+              <button className="btn-primary" onClick={requestOtp} disabled={!email || sendingOtp}>
+                {sendingOtp ? 'Mengirim...' : 'Kirim OTP'}
+              </button>
             </>
           ) : (
             <>
-              <div className="input-group"><label>Kode OTP</label><input type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="6 digit" /></div>
-              <button className="btn-primary" onClick={verifyOtp} disabled={otp.length !== 6}>Verifikasi</button>
+              <p style={{ color: '#8b949e', fontSize: 13, marginBottom: 16 }}>
+                Kode OTP dikirim ke <strong style={{ color: '#e6edf3' }}>{email}</strong>
+              </p>
+
+              {/* Countdown Timer */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, marginBottom: 16,
+                padding: '10px 16px',
+                background: countdown > 0 ? '#1c2128' : '#2d1b1b',
+                borderRadius: 8,
+                border: `1px solid ${countdown > 60 ? '#30363d' : countdown > 0 ? '#f0883e' : '#f85149'}`,
+              }}>
+                <span style={{ fontSize: 18 }}>{countdown > 0 ? '⏰' : '❌'}</span>
+                <span style={{
+                  fontFamily: 'monospace',
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                  color: countdown > 60 ? '#4f8ef7' : countdown > 0 ? '#f0883e' : '#f85149',
+                }}>
+                  {countdown > 0 ? formatCountdown(countdown) : '00:00'}
+                </span>
+                <span style={{ color: '#8b949e', fontSize: 12 }}>
+                  {countdown > 0 ? 'sisa waktu' : 'kode expired'}
+                </span>
+              </div>
+
+              <div className="input-group">
+                <label>Kode OTP</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otp}
+                  onChange={e => { setOtp(e.target.value.replace(/\D/g, '')); setErrorMsg(''); }}
+                  placeholder="6 digit"
+                  onKeyDown={e => e.key === 'Enter' && otp.length === 6 && !verifying && verifyOtp()}
+                  disabled={countdown === 0}
+                />
+              </div>
+
+              {errorMsg && (
+                <p style={{ color: '#f85149', fontSize: 13, marginBottom: 12, marginTop: -4 }}>⚠️ {errorMsg}</p>
+              )}
+
+              <button
+                className="btn-primary"
+                onClick={verifyOtp}
+                disabled={otp.length !== 6 || verifying || countdown === 0}
+                style={{ marginBottom: 12 }}
+              >
+                {verifying ? 'Memverifikasi...' : 'Verifikasi'}
+              </button>
+
+              <button
+                className="btn-secondary"
+                onClick={resendOtp}
+                disabled={sendingOtp || countdown > 0}
+                style={{ width: '100%', opacity: countdown > 0 ? 0.5 : 1 }}
+              >
+                {sendingOtp ? 'Mengirim...' : countdown > 0 ? `Kirim Ulang (tunggu ${formatCountdown(countdown)})` : 'Kirim Ulang OTP'}
+              </button>
+
+              <button
+                onClick={() => { setStep('login'); setOtp(''); setErrorMsg(''); clearInterval(timerRef.current); }}
+                style={{ background: 'none', border: 'none', color: '#8b949e', fontSize: 12, cursor: 'pointer', marginTop: 12, display: 'block', width: '100%', textAlign: 'center' }}
+              >
+                ← Ganti email
+              </button>
             </>
           )}
         </div></div>
