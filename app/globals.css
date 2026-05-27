@@ -575,4 +575,26 @@ body {
 .mt-12 { margin-top: 12px; }
 .mt-16 { margin-top: 16px; }
 
+.sheet-search {
+  margin-top: 14px;
+}
+.sheet-search input {
+  width: 100%;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 0.85rem;
+  outline: none;
+  transition: all 0.2s var(--ease-in-out);
+}
+.sheet-search input:focus {
+  border-color: var(--border-blue);
+  box-shadow: 0 0 0 3px var(--blue-soft);
+}
+.sheet-search input::placeholder {
+  color: var(--text-4);
+}
+
 ::-webkit-scrollbar { width: 0px; background: transparent; }
