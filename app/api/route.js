@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { redis, PROFIT, getUserById, deductBalance, updateProfile } from '@/lib/redis';
+import { redis, PROFIT, getUserById, deductBalance, updateProfile, addBalance } from '@/lib/redis';
 
 const BASE = 'https://www.rumahotp.io/api';
 const ENDPOINTS = {
@@ -96,6 +96,18 @@ export async function POST(request) {
     const url = `${BASE}${ENDPOINTS.deposit_status}?deposit_id=${payload.deposit_id}`;
     const r = await fetch(url, { headers: { 'x-apikey': key } });
     const data = await r.json();
+    
+    if (data.success && data.data && (data.data.status === 'success' || data.data.status === 'paid')) {
+      const dep = await redis.hgetall(`deposit:${payload.deposit_id}`);
+      if (dep && dep.status === 'pending') {
+        await redis.hset(`deposit:${payload.deposit_id}`, { status: 'completed' });
+        const newBalance = await addBalance(user.id, dep.amount);
+        return NextResponse.json({ success: true, status: 'paid', new_balance: newBalance, msg: 'Deposit berhasil ditambahkan' });
+      } else if (dep && dep.status === 'completed') {
+        const u = await getUserById(user.id);
+        return NextResponse.json({ success: true, status: 'paid', new_balance: u.balance, msg: 'Deposit sudah diproses' });
+      }
+    }
     return NextResponse.json(data);
   }
 
@@ -123,7 +135,7 @@ export async function POST(request) {
       data.data.base_price = basePrice;
       await redis.hset(`order:${data.data.order_id}`, { userId: user.id, service_id: payload.service_id, number: data.data.phone_number, status: 'waiting' });
     } else {
-      await redis.hincrby(`user:email:${user.email}`, 'balance', sellPrice);
+      await addBalance(user.id, sellPrice);
     }
 
     return NextResponse.json(data);
