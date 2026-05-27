@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 const api = async (endpoint, payload = {}) => {
   const res = await fetch('/api', {
@@ -119,7 +119,7 @@ export default function Page() {
 
   const [services, setServices] = useState([]);
   const [query, setQuery] = useState('');
-  const [countryQuery, setCountryQuery] = useState(''); // State Pencarian Negara
+  const [countryQuery, setCountryQuery] = useState('');
   const [loadingSvcs, setLoadingSvcs] = useState(true);
 
   const [selectedSvc, setSelectedSvc] = useState(null);
@@ -154,6 +154,12 @@ export default function Page() {
   const [showPw, setShowPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfPw, setShowConfPw] = useState(false);
+
+  const [showTopupModal, setShowTopupModal] = useState(false);
+  const [ppobItems, setPpobItems] = useState([]);
+  const [ppobLoading, setPpobLoading] = useState(false);
+  const [ppobError, setPpobError] = useState('');
+  const [ppobQuery, setPpobQuery] = useState('');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('walz_theme') || 'dark';
@@ -258,6 +264,24 @@ export default function Page() {
       setCountryQuery(''); 
     }
   }, [showSheet]);
+
+  const fetchPpob = async () => {
+    setPpobLoading(true);
+    setPpobError('');
+    const r = await api('h2h_products');
+    setPpobLoading(false);
+    if (r.success && Array.isArray(r.data)) {
+      setPpobItems(r.data);
+    } else {
+      setPpobError(r.msg || 'Sistem Sedang Maintenance');
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'ppob' && ppobItems.length === 0 && !ppobError) {
+      fetchPpob();
+    }
+  }, [tab]);
 
   const startCountdown = () => {
     clearInterval(timerRef.current);
@@ -401,7 +425,12 @@ export default function Page() {
       setShowSheet(false);
       api('balance').then(res => res.success && setBalance(res.data.balance));
     } else {
-      setError(r.msg || 'Gagal membeli nomor');
+      if (r.msg && r.msg.toLowerCase().includes('tidak cukup')) {
+        setShowTopupModal(true);
+        setShowSheet(false);
+      } else {
+        setError(r.msg || 'Gagal membeli nomor');
+      }
     }
   };
 
@@ -420,8 +449,9 @@ export default function Page() {
     setCreatingQris(true); setError(''); setDepositMsg(null);
     const r = await api('deposit_create', { amount: Number(depositAmount) });
     setCreatingQris(false);
-    if (r.success) {
-      setQrisData({ ...r.data, actual_amount: depositAmount });
+    if (r.success && r.data) {
+      const actualAmt = r.data.amount || r.data.total || depositAmount;
+      setQrisData({ ...r.data, actual_amount: actualAmt });
       setDepositCooldown(120);
     } else {
       setError(r.msg || 'Gagal membuat QRIS. Cek nominal kembali.');
@@ -450,7 +480,6 @@ export default function Page() {
     const r = await api('deposit_cancel', { deposit_id: qrisData.id });
     setCancelingDeposit(false);
     
-    // Asumsikan pembatalan berhasil / memaksa keluar di front-end
     setQrisData(null); 
     setDepositAmount(''); 
     setDepositMsg({ type: 'success', text: 'Transaksi pembayaran dibatalkan.' });
@@ -480,6 +509,18 @@ export default function Page() {
     setTimeout(() => setProfileMsg(null), 4000);
   };
 
+  const filteredSvcs = useMemo(() => {
+    return services.filter(s => s.service_name?.toLowerCase().includes(query.toLowerCase()));
+  }, [services, query]);
+
+  const filteredCountries = useMemo(() => {
+    return countries.filter(c => c.name.toLowerCase().includes(countryQuery.toLowerCase()));
+  }, [countries, countryQuery]);
+
+  const filteredPpob = useMemo(() => {
+    return ppobItems.filter(p => p.name?.toLowerCase().includes(ppobQuery.toLowerCase()) || p.brand?.toLowerCase().includes(ppobQuery.toLowerCase()));
+  }, [ppobItems, ppobQuery]);
+
   if (step === 'init') {
     return (
       <div className="auth-screen">
@@ -490,18 +531,18 @@ export default function Page() {
 
   if (step === 'welcome') {
     return (
-      <div className="auth-screen">
-        <div className="auth-logo">
-          <div className="auth-logo-badge"><div className="auth-logo-dot" /><span>Online</span></div>
+      <div className="auth-screen welcome-bg">
+        <div className="auth-logo floating">
+          <div className="auth-logo-badge"><div className="auth-logo-dot" /><span>Sistem Online</span></div>
           <h1>WALZ <span>NEXUS</span></h1>
-          <p>Nomor Virtual Premium</p>
+          <p>Layanan Digital Premium</p>
         </div>
-        <div className="auth-card" style={{ padding: '40px 24px' }}>
-          <button className="btn btn-primary" onClick={() => { setStep('register'); setError(''); }} style={{ height: 56, fontSize: '1rem' }}>
-            📝 Registrasi Baru
+        <div className="auth-card" style={{ padding: '48px 28px' }}>
+          <button className="btn btn-primary" onClick={() => { setStep('register'); setError(''); }} style={{ height: 60, fontSize: '1.05rem', borderRadius: 'var(--r-full)' }}>
+            📝 Buat Akun Baru
           </button>
-          <button className="btn btn-secondary" onClick={() => { setStep('login'); setError(''); }} style={{ height: 56, fontSize: '1rem', marginBottom: 0 }}>
-            🔑 Login Akun
+          <button className="btn btn-secondary" onClick={() => { setStep('login'); setError(''); }} style={{ height: 60, fontSize: '1.05rem', marginBottom: 0, borderRadius: 'var(--r-full)' }}>
+            🔑 Masuk ke Akun
           </button>
         </div>
       </div>
@@ -510,11 +551,11 @@ export default function Page() {
 
   if (step === 'login') {
     return (
-      <div className="auth-screen">
+      <div className="auth-screen welcome-bg">
         <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Login Kembali 👋</div>
-          <div className="auth-card-sub">Masukkan username/email dan password</div>
+          <div className="auth-card-sub">Masukkan username/email dan password kamu</div>
           {error && <div className="error-msg">⚠️ {error}</div>}
           <div className="input-field">
             <label>Username / Email</label>
@@ -530,8 +571,8 @@ export default function Page() {
               <EyeToggle show={showPw} onToggle={() => setShowPw(v => !v)} />
             </div>
           </div>
-          <button className="btn btn-primary" onClick={loginWithPassword} disabled={!identifier || !pwInput || busy}>
-            {busy ? <><LoadingSpinner /> Memproses...</> : '🔑 Masuk'}
+          <button className="btn btn-primary" onClick={loginWithPassword} disabled={!identifier || !pwInput || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
+            {busy ? <><LoadingSpinner /> Memproses...</> : '🔑 Masuk Sekarang'}
           </button>
           <button className="btn-ghost" onClick={() => { setStep('forgot'); setError(''); }} style={{ color: 'var(--blue2)', marginBottom: 8 }}>
             Lupa Password?
@@ -546,11 +587,11 @@ export default function Page() {
 
   if (step === 'register') {
     return (
-      <div className="auth-screen">
+      <div className="auth-screen welcome-bg">
         <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Daftar Akun Baru 🚀</div>
-          <div className="auth-card-sub">Masukkan email aktif untuk verifikasi</div>
+          <div className="auth-card-sub">Masukkan email aktif untuk menerima kode verifikasi</div>
           {error && <div className="error-msg">⚠️ {error}</div>}
           <div className="input-field">
             <label>Alamat Email</label>
@@ -558,7 +599,7 @@ export default function Page() {
               onChange={e => { setEmail(e.target.value); setError(''); }}
               onKeyDown={e => e.key === 'Enter' && !busy && email && sendOtp(email, 'register')} />
           </div>
-          <button className="btn btn-primary" onClick={() => sendOtp(email, 'register')} disabled={!email || busy}>
+          <button className="btn btn-primary" onClick={() => sendOtp(email, 'register')} disabled={!email || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
             {busy ? <><LoadingSpinner /> Mengirim...</> : '✉️ Kirim Kode OTP'}
           </button>
           <button className="btn-ghost" onClick={() => { setStep('welcome'); setEmail(''); setError(''); }}>
@@ -573,7 +614,7 @@ export default function Page() {
     const isReset = step === 'forgot_otp';
     const timerClass = countdown > 60 ? '' : countdown > 0 ? 'warning' : 'expired';
     return (
-      <div className="auth-screen">
+      <div className="auth-screen welcome-bg">
         <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Verifikasi OTP 📬</div>
@@ -591,10 +632,10 @@ export default function Page() {
               onKeyDown={e => e.key === 'Enter' && otpCode.length === 6 && !busy && verifyOtp()}
               disabled={countdown === 0} />
           </div>
-          <button className="btn btn-primary" onClick={verifyOtp} disabled={otpCode.length !== 6 || busy || countdown === 0}>
+          <button className="btn btn-primary" onClick={verifyOtp} disabled={otpCode.length !== 6 || busy || countdown === 0} style={{ borderRadius: 'var(--r-full)' }}>
             {busy ? <><LoadingSpinner /> Verifikasi...</> : '✅ Verifikasi OTP'}
           </button>
-          <button className="btn btn-secondary" onClick={() => sendOtp(email, isReset ? 'reset' : 'register')} disabled={busy || countdown > 0}>
+          <button className="btn btn-secondary" onClick={() => sendOtp(email, isReset ? 'reset' : 'register')} disabled={busy || countdown > 0} style={{ borderRadius: 'var(--r-full)' }}>
             {countdown > 0 ? `Kirim Ulang (${formatTime(countdown)})` : '🔄 Kirim Ulang OTP'}
           </button>
           <button className="btn-ghost" onClick={() => { setStep(isReset ? 'forgot' : 'register'); setOtpCode(''); setError(''); }}>
@@ -609,7 +650,7 @@ export default function Page() {
     const isMatch = newPass === confirmPass;
     const isValid = setupUser.length > 2 && newPass.length >= 6 && isMatch;
     return (
-      <div className="auth-screen">
+      <div className="auth-screen welcome-bg">
         <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Lengkapi Profil ✍️</div>
@@ -635,7 +676,7 @@ export default function Page() {
           </div>
           {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
           {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
-          <button className="btn btn-primary" onClick={completeSetup} disabled={!isValid || busy}>
+          <button className="btn btn-primary" onClick={completeSetup} disabled={!isValid || busy} style={{ height: 54, borderRadius: 'var(--r-full)' }}>
             {busy ? <><LoadingSpinner /> Menyimpan...</> : '🚀 Mulai Gunakan Aplikasi'}
           </button>
         </div>
@@ -645,7 +686,7 @@ export default function Page() {
 
   if (step === 'forgot') {
     return (
-      <div className="auth-screen">
+      <div className="auth-screen welcome-bg">
         <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Lupa Password 🔒</div>
@@ -655,7 +696,7 @@ export default function Page() {
             <label>Email Terdaftar</label>
             <input type="email" value={email} placeholder="nama@email.com" onChange={e => { setEmail(e.target.value); setError(''); }} />
           </div>
-          <button className="btn btn-primary" onClick={() => sendOtp(email, 'reset')} disabled={!email || busy}>
+          <button className="btn btn-primary" onClick={() => sendOtp(email, 'reset')} disabled={!email || busy} style={{ borderRadius: 'var(--r-full)' }}>
             {busy ? <><LoadingSpinner /> Mengirim...</> : '📩 Kirim OTP Reset'}
           </button>
           <button className="btn-ghost" onClick={() => { setStep('login'); setError(''); }}>
@@ -670,7 +711,7 @@ export default function Page() {
     const isMatch = newPass === confirmPass;
     const isValid = newPass.length >= 6 && isMatch;
     return (
-      <div className="auth-screen">
+      <div className="auth-screen welcome-bg">
         <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Password Baru 🔐</div>
@@ -692,16 +733,13 @@ export default function Page() {
           </div>
           {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
           {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
-          <button className="btn btn-primary" onClick={resetPassword} disabled={!isValid || busy}>
+          <button className="btn btn-primary" onClick={resetPassword} disabled={!isValid || busy} style={{ borderRadius: 'var(--r-full)' }}>
             {busy ? <><LoadingSpinner /> Menyimpan...</> : '💾 Simpan Password'}
           </button>
         </div>
       </div>
     );
   }
-
-  const filteredSvcs = services.filter(s => s.service_name?.toLowerCase().includes(query.toLowerCase()));
-  const filteredCountries = countries.filter(c => c.name.toLowerCase().includes(countryQuery.toLowerCase()));
 
   return (
     <>
@@ -783,7 +821,7 @@ export default function Page() {
                   <div className="otp-waiting">
                     <div className="otp-waiting-icon">📱</div>
                     <p>Menunggu SMS masuk...<br />Gunakan nomor di atas untuk verifikasi</p>
-                    <button className="btn btn-primary" onClick={checkSms} disabled={checkingSms} style={{ width: '100%' }}>
+                    <button className="btn btn-primary" onClick={checkSms} disabled={checkingSms} style={{ width: '100%', borderRadius: 'var(--r-full)' }}>
                       {checkingSms ? <><LoadingSpinner /> Mengecek...</> : '🔄 Cek SMS'}
                     </button>
                   </div>
@@ -798,6 +836,52 @@ export default function Page() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {tab === 'ppob' && (
+          <div style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
+            <div className="section-hd">
+              <h2>Top Up & Game</h2>
+              {!ppobLoading && !ppobError && <span className="count">{filteredPpob.length} produk</span>}
+            </div>
+            
+            {ppobError ? (
+               <div className="empty-state" style={{ padding: '60px 0' }}>
+                 <div className="modal-icon text-amber" style={{ animation: 'none' }}>🛠️</div>
+                 <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 8 }}>Sistem Maintenance</h3>
+                 <p style={{ textAlign: 'center', padding: '0 20px' }}>{ppobError}<br/>Silakan coba lagi nanti.</p>
+                 <button className="btn btn-secondary mt-16" onClick={fetchPpob} style={{ width: 'auto', borderRadius: 'var(--r-full)' }}>🔄 Cek Kembali</button>
+               </div>
+            ) : (
+              <>
+                <div className="search-wrap">
+                  <span className="search-icon">⌕</span>
+                  <input value={ppobQuery} placeholder="Cari nama atau brand produk..." onChange={e => setPpobQuery(e.target.value)} />
+                </div>
+                {ppobLoading ? (
+                  <div className="loading-grid">
+                    <LoadingSpinner />
+                    <p className="loading-text">Memuat produk PPOB...</p>
+                  </div>
+                ) : filteredPpob.length === 0 ? (
+                  <div className="empty-state">
+                    <span className="icon">🔍</span>
+                    <p>Tidak ada produk ditemukan</p>
+                  </div>
+                ) : (
+                  <div className="service-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                    {filteredPpob.map((p, i) => (
+                      <button key={p.code} className="svc-card" style={{ animationDelay: `${(i % 15) * 0.03}s`, alignItems: 'flex-start', textAlign: 'left', padding: '16px' }}>
+                        <div className="svc-name" style={{ textAlign: 'left', fontSize: '0.82rem', marginBottom: 4 }}>{p.name}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: 8, textTransform: 'capitalize' }}>{p.brand} - {p.category}</div>
+                        <div className="svc-price" style={{ fontSize: '0.9rem' }}>{fmt(p.price)}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -825,7 +909,7 @@ export default function Page() {
                   ))}
                 </div>
                 {error && <div className="error-msg" style={{ marginTop: 12 }}>{error}</div>}
-                <button className="btn btn-primary" onClick={createQris} disabled={!depositAmount || Number(depositAmount) <= 0 || creatingQris || depositCooldown > 0} style={{ marginTop: 12 }}>
+                <button className="btn btn-primary" onClick={createQris} disabled={!depositAmount || Number(depositAmount) <= 0 || creatingQris || depositCooldown > 0} style={{ marginTop: 12, borderRadius: 'var(--r-full)' }}>
                   {creatingQris ? <><LoadingSpinner /> Membuat QRIS...</> : depositCooldown > 0 ? `Tunggu ${formatTime(depositCooldown)}` : '📲 Buat QRIS Pembayaran'}
                 </button>
               </div>
@@ -838,10 +922,10 @@ export default function Page() {
                   <img src={qrisData.qr_image || qrisData.qr_url} alt="QRIS" />
                 </div>
                 <div className="qris-amount">{fmt(qrisData.actual_amount)}</div>
-                <button className="btn btn-success" onClick={checkDeposit} disabled={checkingDeposit}>
+                <button className="btn btn-success" onClick={checkDeposit} disabled={checkingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
                   {checkingDeposit ? <><LoadingSpinner /> Mengecek...</> : '✅ Cek Status Pembayaran'}
                 </button>
-                <button className="btn btn-danger" onClick={cancelDeposit} disabled={cancelingDeposit}>
+                <button className="btn btn-danger" onClick={cancelDeposit} disabled={cancelingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
                   {cancelingDeposit ? <><LoadingSpinner /> Membatalkan...</> : '✖ Batalkan Transaksi'}
                 </button>
               </div>
@@ -876,7 +960,7 @@ export default function Page() {
                   <label>Email</label>
                   <input type="email" value={user?.email || ''} disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} />
                 </div>
-                <button className="btn btn-primary mt-16" onClick={saveProfile} disabled={savingProfile}>
+                <button className="btn btn-primary mt-16" onClick={saveProfile} disabled={savingProfile} style={{ borderRadius: 'var(--r-full)' }}>
                   {savingProfile ? <><LoadingSpinner /> Menyimpan...</> : '💾 Simpan Profil'}
                 </button>
               </div>
@@ -908,7 +992,7 @@ export default function Page() {
                   </div>
                 </div>
                 {profileConfirmPass && profileNewPass !== profileConfirmPass && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
-                <button className="btn btn-primary" onClick={savePassword} disabled={savingPass || profileNewPass.length < 6 || profileNewPass !== profileConfirmPass || (hasPassword && !curPass)}>
+                <button className="btn btn-primary" onClick={savePassword} disabled={savingPass || profileNewPass.length < 6 || profileNewPass !== profileConfirmPass || (hasPassword && !curPass)} style={{ borderRadius: 'var(--r-full)' }}>
                   {savingPass ? <><LoadingSpinner /> Menyimpan...</> : '🔐 Simpan Password'}
                 </button>
               </div>
@@ -916,7 +1000,7 @@ export default function Page() {
 
             <div className="profile-section">
               <div className="profile-section-body">
-                <button className="btn btn-danger" onClick={logout} style={{ marginBottom: 0 }}>🚪 Keluar dari Akun</button>
+                <button className="btn btn-danger" onClick={logout} style={{ marginBottom: 0, borderRadius: 'var(--r-full)' }}>🚪 Keluar dari Akun</button>
               </div>
             </div>
             <div style={{ height: 16 }} />
@@ -928,6 +1012,10 @@ export default function Page() {
         <button className={`nav-item ${tab === 'virtual' ? 'active' : ''}`} onClick={() => { setTab('virtual'); setOrder(null); }}>
           <div className="nav-icon-wrap">📞</div>
           <span>Produk</span>
+        </button>
+        <button className={`nav-item ${tab === 'ppob' ? 'active' : ''}`} onClick={() => setTab('ppob')}>
+          <div className="nav-icon-wrap">🎮</div>
+          <span>PPOB</span>
         </button>
         <button className={`nav-item ${tab === 'deposit' ? 'active' : ''}`} onClick={() => setTab('deposit')}>
           <div className="nav-icon-wrap">💳</div>
@@ -989,11 +1077,23 @@ export default function Page() {
         </div>
         {selectedCountry && (
           <div className="sheet-footer">
-            <button className="btn btn-primary" onClick={buyNumber} disabled={ordering}>
+            <button className="btn btn-primary" onClick={buyNumber} disabled={ordering} style={{ borderRadius: 'var(--r-full)' }}>
               {ordering ? <><LoadingSpinner /> Memproses...</> : `🛒 Beli Nomor ${getFlag(selectedCountry.name)} ${fmt(selectedCountry.available[0]?.price)}`}
             </button>
           </div>
         )}
+      </div>
+
+      <div className={`modal-overlay ${showTopupModal ? 'open' : ''}`}>
+        <div className={`modal-content ${showTopupModal ? 'popIn' : ''}`}>
+          <div className="modal-icon">💸</div>
+          <h3>Saldo Tidak Cukup!</h3>
+          <p>Waduh, saldo kamu kurang nih buat beli nomor ini. Yuk top up dulu biar bisa transaksi lagi dengan lancar.</p>
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setShowTopupModal(false)} style={{ borderRadius: 'var(--r-full)' }}>Nanti Saja</button>
+            <button className="btn btn-primary" onClick={() => { setShowTopupModal(false); setTab('deposit'); }} style={{ borderRadius: 'var(--r-full)', marginBottom: 10 }}>💳 Top Up Sekarang</button>
+          </div>
+        </div>
       </div>
     </>
   );
