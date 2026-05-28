@@ -400,7 +400,9 @@ export default function Page() {
       setDepositCountdown(0);
       return;
     }
-    const expiredAt = Number(selectedHistoryItem.timestamp) + 20 * 60 * 1000;
+    const expiredAt = selectedHistoryItem.expired_at
+  ? Number(selectedHistoryItem.expired_at)
+  : Number(selectedHistoryItem.timestamp) + 20 * 60 * 1000;
     const update = () => setDepositCountdown(Math.max(0, Math.floor((expiredAt - Date.now()) / 1000)));
     update();
     const t = setInterval(update, 1000);
