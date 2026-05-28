@@ -8,8 +8,8 @@ const ENDPOINTS = {
   operators: '/v2/operators',
   order_create: '/v2/orders',
   order_status: '/v1/orders/get_status',
-  deposit_create: '/v2/deposit/create',
-  deposit_status: '/v2/deposit/get_status',
+  deposit_create: '/v1/deposit/create', 
+  deposit_status: '/v1/deposit/get_status',
   deposit_cancel: '/v1/deposit/cancel',
   h2h_product: '/v1/h2h/product',
 };
@@ -127,12 +127,11 @@ export async function POST(request) {
 
       if (item.status === 'pending' && itemType === 'deposit') {
         try {
-          const r = await fetch(`${BASE}/v2/deposit/get_status?deposit_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
+          const r = await fetch(`${BASE}${ENDPOINTS.deposit_status}?deposit_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
           const resData = await r.json();
-          [span_1](start_span)// Cek status deposit via V2[span_1](end_span)
           if (resData.success && resData.data && (resData.data.status === 'success' || resData.data.status === 'paid')) {
             await redis.hset(k, { status: 'completed' });
-            // PERBAIKAN: Tambah saldo menggunakan base_amount (saldo bersih diterima), bukan total bayar
+            // Gunakan base_amount (nominal bersih) agar saldo yang masuk ke user tepat
             await addBalance(user.id, Number(item.base_amount || item.amount));
             item.status = 'completed';
           } else if (resData.data && resData.data.status === 'cancel') {
@@ -142,7 +141,7 @@ export async function POST(request) {
         } catch(e){}
       } else if (item.status === 'waiting' && itemType === 'order') {
         try {
-          const r = await fetch(`${BASE}/v1/orders/get_status?order_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
+          const r = await fetch(`${BASE}${ENDPOINTS.order_status}?order_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
           const resData = await r.json();
           if (resData.success && resData.data?.otp_code) {
             await redis.hset(k, { status: 'completed', otp_code: resData.data.otp_code, otp_msg: resData.data.otp_msg });
@@ -169,26 +168,27 @@ export async function POST(request) {
     const data = await r.json();
 
     if (data.success && data.data) {
-      [span_2](start_span)// PERBAIKAN: Baca parameter API V2 dengan benar[span_2](end_span)
-      const totalAmt = data.data.total || payload.amount;
-      const diterimaAmt = data.data.diterima || payload.amount;
-      const feeAmt = data.data.fee || 0;
+      // Kalkulasi matematika manual dari API v1 untuk disuntikkan ke v2 frontend
+      const totalAmt = Number(data.data.amount) || Number(payload.amount); // Tagihan total (misal: 2055)
+      const diterimaAmt = Number(payload.amount); // Nominal masuk saldo (misal: 2000)
+      const feeAmt = totalAmt - diterimaAmt; // Biaya admin (misal: 55)
+      
       const depId = data.data.id || data.data.deposit_id;
       const qrImage = data.data.qr_image || data.data.qr_url || '';
       
       await redis.hset(`deposit:${depId}`, { 
         userId: user.id, 
-        amount: Number(totalAmt),          // Total tagihan pelanggan (2055)
-        base_amount: Number(diterimaAmt),  // Total saldo yang diterima (2000)
-        fee: Number(feeAmt),               // Biaya admin (55)
+        amount: totalAmt,          
+        base_amount: diterimaAmt,  
+        fee: feeAmt,               
         qr_image: qrImage,
         status: 'pending',
         timestamp: Date.now()
       });
       await redis.lpush(`history:${user.id}`, `deposit:${depId}`);
       
-      // Inject parameter tambahan agar frontend (page.jsx) langsung menerima data akurat
-      data.data.amount = totalAmt;
+      // Inject parameter yang dibutuhkan `page.jsx`
+      data.data.total = totalAmt;
       data.data.diterima = diterimaAmt;
       data.data.fee = feeAmt;
       
@@ -205,14 +205,15 @@ export async function POST(request) {
     const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
     
-    [span_3](start_span)// Cek status deposit via V2[span_3](end_span)
     if (data.success && data.data && (data.data.status === 'success' || data.data.status === 'paid')) {
       const dep = await redis.hgetall(`deposit:${payload.deposit_id}`);
       if (dep && dep.status === 'pending') {
         await redis.hset(`deposit:${payload.deposit_id}`, { status: 'completed' });
-        // PERBAIKAN: Tambah saldo menggunakan base_amount (saldo bersih diterima), bukan total bayar
+        
+        // PENTING: Hanya menambahkan `base_amount` (Rp 2000) ke saldo pengguna, bukan tagihannya.
         const addedAmount = Number(dep.base_amount || dep.amount);
         const newBalance = await addBalance(user.id, addedAmount);
+        
         return NextResponse.json({ success: true, status: 'paid', new_balance: newBalance, msg: 'Deposit berhasil ditambahkan' });
       } else if (dep && dep.status === 'completed') {
         const u = await getUserById(user.id);
