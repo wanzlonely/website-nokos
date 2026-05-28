@@ -1964,7 +1964,7 @@ export default function Page() {
               }}
               onClick={() => { modal.onConfirm(); closeModal(); }}
             >
-              💳 Top Up Sekarang
+              🎯 Top Up Sekarang
             </button>
           </div>
         ) : (
