@@ -701,6 +701,28 @@ body {
   border-radius: var(--r-xl); padding: 18px;
   box-shadow: var(--card-shadow);
 }
+
+/* Top Up active QRIS layout */
+.qris-topup-wrap { display: flex; flex-direction: column; gap: 12px; animation: slideUp 0.35s var(--ease-out) both; }
+
+/* Summary card below QRIS blue card */
+.qris-summary-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl);
+  padding: 16px 18px; box-shadow: var(--card-shadow); display: flex; flex-direction: column; gap: 0;
+}
+.qris-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  font-size: 0.83rem; font-weight: 700; color: var(--text-2);
+}
+.qris-summary-row:last-of-type { border-bottom: none; }
+.qris-summary-total { font-weight: 900; color: var(--blue2) !important; font-size: 0.9rem; }
+.qris-summary-total span { color: var(--blue2) !important; }
+.qris-cek-btn {
+  width: 100%; margin-top: 12px; border-radius: var(--r-full) !important;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 48px; font-size: 0.88rem; font-weight: 800;
+}
 .deposit-amounts { 
   display: grid; grid-template-columns: repeat(3, 1fr); 
   gap: 10px; margin-bottom: 18px; 
