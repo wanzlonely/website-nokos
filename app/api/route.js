@@ -131,7 +131,7 @@ export async function POST(request) {
           const resData = await r.json();
           if (resData.success && resData.data && (resData.data.status === 'success' || resData.data.status === 'paid')) {
             await redis.hset(k, { status: 'completed' });
-            await addBalance(user.id, item.amount);
+            await addBalance(user.id, Number(item.diterima || item.amount));
             item.status = 'completed';
           } else if (resData.data && resData.data.status === 'cancel') {
             await redis.hset(k, { status: 'canceled' });
@@ -173,10 +173,16 @@ export async function POST(request) {
       const expiredAt = data.data.expired_at || data.data.expire_time || data.data.expired || '';
       const expiredAtMs = expiredAt 
         ? (isNaN(Number(expiredAt)) ? new Date(expiredAt).getTime() : Number(expiredAt))
-        : Date.now() + 13 * 60 * 1000;
+        : Date.now() + 20 * 60 * 1000;
+      const feeAmt = Number(data.data.fee || 0);
+      const diterimaAmt = Number(data.data.diterima || payload.amount);
+      const totalAmt = Number(data.data.total || diterimaAmt + feeAmt);
       await redis.hset(`deposit:${depId}`, { 
-        userId: user.id, 
-        amount: Number(actualAmt), 
+        userId: user.id,
+        fee: feeAmt,
+        diterima: diterimaAmt,
+        total: totalAmt,
+        amount: diterimaAmt,
         base_amount: Number(payload.amount),
         qr_image: qrImage,
         status: 'pending',
@@ -201,7 +207,7 @@ export async function POST(request) {
       const dep = await redis.hgetall(`deposit:${payload.deposit_id}`);
       if (dep && dep.status === 'pending') {
         await redis.hset(`deposit:${payload.deposit_id}`, { status: 'completed' });
-        const newBalance = await addBalance(user.id, dep.amount);
+        const newBalance = await addBalance(user.id, Number(dep.diterima || dep.amount));
         return NextResponse.json({ success: true, status: 'paid', new_balance: newBalance, msg: 'Deposit berhasil ditambahkan' });
       } else if (dep && dep.status === 'completed') {
         const u = await getUserById(user.id);
