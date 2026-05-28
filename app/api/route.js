@@ -8,8 +8,8 @@ const ENDPOINTS = {
   operators: '/v2/operators',
   order_create: '/v2/orders',
   order_status: '/v1/orders/get_status',
-  deposit_create: '/v1/deposit/create', 
-  deposit_status: '/v1/deposit/get_status',
+  deposit_create: '/v2/deposit/create',
+  deposit_status: '/v2/deposit/get_status',
   deposit_cancel: '/v1/deposit/cancel',
   h2h_product: '/v1/h2h/product',
 };
@@ -127,12 +127,11 @@ export async function POST(request) {
 
       if (item.status === 'pending' && itemType === 'deposit') {
         try {
-          const r = await fetch(`${BASE}${ENDPOINTS.deposit_status}?deposit_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
+          const r = await fetch(`${BASE}/v2/deposit/get_status?deposit_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
           const resData = await r.json();
           if (resData.success && resData.data && (resData.data.status === 'success' || resData.data.status === 'paid')) {
             await redis.hset(k, { status: 'completed' });
-            // Gunakan base_amount (nominal bersih) agar saldo yang masuk ke user tepat
-            await addBalance(user.id, Number(item.base_amount || item.amount));
+            await addBalance(user.id, item.amount);
             item.status = 'completed';
           } else if (resData.data && resData.data.status === 'cancel') {
             await redis.hset(k, { status: 'canceled' });
@@ -141,7 +140,7 @@ export async function POST(request) {
         } catch(e){}
       } else if (item.status === 'waiting' && itemType === 'order') {
         try {
-          const r = await fetch(`${BASE}${ENDPOINTS.order_status}?order_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
+          const r = await fetch(`${BASE}/v1/orders/get_status?order_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
           const resData = await r.json();
           if (resData.success && resData.data?.otp_code) {
             await redis.hset(k, { status: 'completed', otp_code: resData.data.otp_code, otp_msg: resData.data.otp_msg });
@@ -166,32 +165,25 @@ export async function POST(request) {
     const url = `${BASE}${ENDPOINTS.deposit_create}?amount=${payload.amount}&payment_id=qris`;
     const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
-
     if (data.success && data.data) {
-      // Kalkulasi matematika manual dari API v1 untuk disuntikkan ke v2 frontend
-      const totalAmt = Number(data.data.amount) || Number(payload.amount); // Tagihan total (misal: 2055)
-      const diterimaAmt = Number(payload.amount); // Nominal masuk saldo (misal: 2000)
-      const feeAmt = totalAmt - diterimaAmt; // Biaya admin (misal: 55)
-      
+      const actualAmt = data.data.diterima || data.data.amount || data.data.total || payload.amount;
       const depId = data.data.id || data.data.deposit_id;
       const qrImage = data.data.qr_image || data.data.qr_url || '';
       
+      const expiredAt = data.data.expired_at || data.data.expire_time || data.data.expired || '';
+      const expiredAtMs = expiredAt 
+        ? (isNaN(Number(expiredAt)) ? new Date(expiredAt).getTime() : Number(expiredAt))
+        : Date.now() + 13 * 60 * 1000;
       await redis.hset(`deposit:${depId}`, { 
         userId: user.id, 
-        amount: totalAmt,          
-        base_amount: diterimaAmt,  
-        fee: feeAmt,               
+        amount: Number(actualAmt), 
+        base_amount: Number(payload.amount),
         qr_image: qrImage,
         status: 'pending',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        expired_at: String(expiredAtMs)
       });
       await redis.lpush(`history:${user.id}`, `deposit:${depId}`);
-      
-      // Inject parameter yang dibutuhkan `page.jsx`
-      data.data.total = totalAmt;
-      data.data.diterima = diterimaAmt;
-      data.data.fee = feeAmt;
-      
       return NextResponse.json(data);
     } else {
       const errorMsg = typeof data.data === 'string' ? data.data : (data.message || 'Gagal membuat QRIS.');
@@ -209,11 +201,7 @@ export async function POST(request) {
       const dep = await redis.hgetall(`deposit:${payload.deposit_id}`);
       if (dep && dep.status === 'pending') {
         await redis.hset(`deposit:${payload.deposit_id}`, { status: 'completed' });
-        
-        // PENTING: Hanya menambahkan `base_amount` (Rp 2000) ke saldo pengguna, bukan tagihannya.
-        const addedAmount = Number(dep.base_amount || dep.amount);
-        const newBalance = await addBalance(user.id, addedAmount);
-        
+        const newBalance = await addBalance(user.id, dep.amount);
         return NextResponse.json({ success: true, status: 'paid', new_balance: newBalance, msg: 'Deposit berhasil ditambahkan' });
       } else if (dep && dep.status === 'completed') {
         const u = await getUserById(user.id);
