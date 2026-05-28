@@ -37,7 +37,7 @@ export async function POST(request) {
   }
 
   if (endpoint === 'balance') {
-    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+    if (!user) return NextResponse.json({ success: false, msg: 'Sesi berakhir, silakan login kembali' }, { status: 401 });
     return NextResponse.json({
       success: true,
       data: {
@@ -50,12 +50,12 @@ export async function POST(request) {
   }
 
   if (endpoint === 'profile_update') {
-    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+    if (!user) return NextResponse.json({ success: false, msg: 'Akses ditolak' }, { status: 401 });
     const updates = {};
     if (payload.username !== undefined) updates.username = payload.username.trim();
     try {
       await updateProfile(user.email, updates);
-      return NextResponse.json({ success: true, msg: 'Profil berhasil disimpan' });
+      return NextResponse.json({ success: true, msg: 'Profil berhasil diperbarui' });
     } catch (error) {
       return NextResponse.json({ success: false, msg: error.message });
     }
@@ -101,7 +101,7 @@ export async function POST(request) {
     return NextResponse.json(data);
   }
 
-  if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+  if (!user) return NextResponse.json({ success: false, msg: 'Autentikasi diperlukan' }, { status: 401 });
 
   if (endpoint === 'deposit_create') {
     const key = getApiKey({});
@@ -113,7 +113,7 @@ export async function POST(request) {
       await redis.hset(`deposit:${data.data.id || data.data.deposit_id}`, { userId: user.id, amount: Number(actualAmt), status: 'pending' });
       return NextResponse.json(data);
     } else {
-      const errorMsg = typeof data.data === 'string' ? data.data : (data.message || 'Gagal membuat QRIS.');
+      const errorMsg = data.message || (typeof data.data === 'string' ? data.data : 'Gagal membuat QRIS.');
       return NextResponse.json({ success: false, msg: errorMsg });
     }
   }
