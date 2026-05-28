@@ -87,7 +87,7 @@ const formatTime = secs => {
 function EyeToggle({ show, onToggle }) {
   return (
     <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
-      {show ? '🙈' : '👁️'}
+      {show ? '🙈' : '🐵'}
     </button>
   );
 }
@@ -96,7 +96,6 @@ function LoadingSpinner({ style }) {
   return <div className="loading-spinner" style={style} />;
 }
 
-// Ikon SVG Duotone Premium
 const SvgProduct = () => (
   <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
     <rect x="5" y="2" width="14" height="20" rx="3" fill="currentColor" fillOpacity="0.15"/>
@@ -120,6 +119,12 @@ const SvgProfile = () => (
     <circle cx="12" cy="8" r="4" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="2"/>
     <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
   </svg>
+);
+const SvgSun = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20" height="20"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+);
+const SvgMoon = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20" height="20"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
 );
 
 const IconCheck = () => (
@@ -162,9 +167,13 @@ export default function Page() {
   const [loadingCountries, setLoadingCountries] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
   
-  // State untuk expand List Server per Negara
   const [expandedCountry, setExpandedCountry] = useState(null);
   const [orderingProv, setOrderingProv] = useState(null);
+
+  const [showOperatorModal, setShowOperatorModal] = useState(false);
+  const [operators, setOperators] = useState([]);
+  const [loadingOperators, setLoadingOperators] = useState(false);
+  const [selectedOrderContext, setSelectedOrderContext] = useState(null);
 
   const [order, setOrder] = useState(null);
   const [checkingSms, setCheckingSms] = useState(false);
@@ -194,7 +203,13 @@ export default function Page() {
   const [ppobError, setPpobError] = useState('');
   const [ppobQuery, setPpobQuery] = useState('');
 
+  const [toast, setToast] = useState(null);
   const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
+
+  const showToast = (type, title, msg) => {
+    setToast({ type, title, msg });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const showModal = (type, title, msg, onConfirm = null) => {
     setModal({ show: true, type, title, msg, onConfirm });
@@ -297,7 +312,6 @@ export default function Page() {
     return () => clearInterval(cd);
   }, [depositCooldown]);
 
-  // Realtime Polling Deposit Status
   useEffect(() => {
     let interval;
     if (qrisData) {
@@ -308,12 +322,10 @@ export default function Page() {
             setBalance(r.new_balance);
             setQrisData(null);
             setDepositAmount('');
-            showModal('success', 'Pembayaran Diterima', 'Deposit berhasil masuk ke saldo kamu secara otomatis!');
+            showToast('success', 'Berhasil', 'Deposit berhasil masuk!');
           }
-        } catch (error) {
-           console.error(error);
-        }
-      }, 4000); // Cek setiap 4 detik
+        } catch (error) {}
+      }, 4000);
     }
     return () => clearInterval(interval);
   }, [qrisData]);
@@ -351,7 +363,7 @@ export default function Page() {
 
   const handleForgotCheck = async () => {
     if (!email) {
-      showModal('warning', 'Perhatian', 'Harap masukkan alamat email terlebih dahulu.');
+      showToast('warning', 'Perhatian', 'Harap masukkan alamat email terlebih dahulu.');
       return;
     }
     setBusy(true);
@@ -359,13 +371,13 @@ export default function Page() {
       const check = await api('check_email', { email });
       if (!check.exists) {
         setBusy(false);
-        showModal('warning', 'Belum Terdaftar', 'Email ini belum terdaftar. Silakan buat akun baru terlebih dahulu.');
+        showToast('error', 'Belum Terdaftar', 'Email ini belum terdaftar di sistem kami.');
         return;
       }
       sendOtp(email, 'reset');
     } catch (e) {
       setBusy(false);
-      showModal('error', 'Error', 'Gagal memproses permintaan.');
+      showToast('error', 'Error', 'Gagal memproses permintaan.');
     }
   };
 
@@ -381,11 +393,11 @@ export default function Page() {
         setStep(mode === 'reset' ? 'forgot_otp' : 'register_otp');
         startCountdown();
       } else {
-        showModal('error', 'Gagal', r.msg || 'Gagal mengirim OTP ke email kamu.');
+        showToast('error', 'Gagal', r.msg || 'Gagal mengirim OTP ke email kamu.');
       }
     } catch (e) {
       setBusy(false);
-      showModal('error', 'Error', 'Gagal terhubung ke server.');
+      showToast('error', 'Error', 'Gagal terhubung ke server.');
     }
   };
 
@@ -412,11 +424,11 @@ export default function Page() {
           }
         }
       } else {
-        showModal('error', 'Verifikasi Gagal', r.msg || 'Kode OTP salah atau sudah expired.');
+        showToast('error', 'Verifikasi Gagal', r.msg || 'Kode OTP salah atau sudah expired.');
       }
     } catch(e) {
       setBusy(false);
-      showModal('error', 'Error', 'Kesalahan koneksi verifikasi OTP.');
+      showToast('error', 'Error', 'Kesalahan koneksi verifikasi OTP.');
     }
   };
 
@@ -437,11 +449,11 @@ export default function Page() {
           }
         });
       } else {
-        showModal('error', 'Gagal', r.msg || 'Gagal menyimpan pengaturan profil.');
+        showToast('error', 'Gagal', r.msg || 'Gagal menyimpan pengaturan profil.');
       }
     } catch(e) {
       setBusy(false);
-      showModal('error', 'Error', 'Terjadi kesalahan sistem.');
+      showToast('error', 'Error', 'Terjadi kesalahan sistem.');
     }
   };
 
@@ -458,15 +470,11 @@ export default function Page() {
         setHasPassword(true);
         setStep('app');
       } else {
-        if (r.msg.toLowerCase().includes('belum terdaftar')) {
-          showModal('warning', 'Belum Terdaftar', r.msg);
-        } else {
-          showModal('error', 'Login Gagal', r.msg);
-        }
+        showToast('error', 'Login Gagal', r.msg);
       }
     } catch (e) {
       setBusy(false);
-      showModal('error', 'Error Sistem', 'Gagal terhubung ke server saat login.');
+      showToast('error', 'Error Sistem', 'Gagal terhubung ke server saat login.');
     }
   };
 
@@ -482,13 +490,13 @@ export default function Page() {
         setUsername(r.user.username);
         setHasPassword(true);
         setStep('app');
-        showModal('success', 'Berhasil', 'Password baru berhasil disimpan.');
+        showToast('success', 'Berhasil', 'Password baru berhasil disimpan.');
       } else {
-        showModal('error', 'Gagal', r.msg || 'Proses reset password gagal, coba lagi nanti.');
+        showToast('error', 'Gagal', r.msg || 'Proses reset password gagal, coba lagi nanti.');
       }
     } catch (e) {
        setBusy(false);
-       showModal('error', 'Error', 'Gagal melakukan reset password.');
+       showToast('error', 'Error', 'Gagal melakukan reset password.');
     }
   };
 
@@ -520,14 +528,35 @@ export default function Page() {
     }
   };
 
-  const buyNumber = async (country, provider) => {
-    if (!selectedSvc || !country || !provider) return;
-    setOrderingProv(provider.provider_id);
+  const handleOrderClick = async (country, provider) => {
+    setSelectedOrderContext({ country, provider });
+    setShowOperatorModal(true);
+    setLoadingOperators(true);
+    try {
+      const r = await api('operators', { country: country.name, provider_id: provider.provider_id });
+      setLoadingOperators(false);
+      if (r.success && Array.isArray(r.data) && r.data.length > 0) {
+        setOperators(r.data);
+      } else {
+        setOperators([{ id: 'any', name: 'any' }]);
+      }
+    } catch (e) {
+      setLoadingOperators(false);
+      setOperators([{ id: 'any', name: 'any' }]);
+    }
+  };
+
+  const confirmOrder = async (operatorName) => {
+    setShowOperatorModal(false);
+    setOrderingProv(selectedOrderContext.provider.provider_id);
+    showToast('info', 'Memproses', 'Membuat pesanan...');
+    
     try {
       const r = await api('order_create', {
-        number_id: country.number_id,
-        provider_id: provider.provider_id,
+        number_id: selectedOrderContext.country.number_id,
+        provider_id: selectedOrderContext.provider.provider_id,
         service_id: selectedSvc.service_code,
+        operator_id: operatorName
       });
       setOrderingProv(null);
       if (r.success) {
@@ -539,12 +568,12 @@ export default function Page() {
           setShowSheet(false);
           showModal('warning', 'Saldo Tidak Cukup!', 'Saldo kamu kurang untuk membeli nomor ini. Yuk top up dulu agar bisa bertransaksi dengan lancar.', () => setTab('deposit'));
         } else {
-          showModal('error', 'Transaksi Gagal', r.msg || 'Gagal membeli nomor dari server.');
+          showToast('error', 'Pesanan Gagal', r.msg || 'Gagal membeli nomor dari server.');
         }
       }
     } catch(e) {
       setOrderingProv(null);
-      showModal('error', 'Error', 'Koneksi ke server gagal.');
+      showToast('error', 'Error', 'Koneksi ke server gagal.');
     }
   };
 
@@ -569,31 +598,11 @@ export default function Page() {
         setQrisData({ ...r.data, actual_amount: actualAmt });
         setDepositCooldown(120);
       } else {
-        showModal('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
+        showToast('error', 'Gagal', r.msg || 'Gagal membuat QRIS.');
       }
     } catch (e) {
       setCreatingQris(false);
-      showModal('error', 'Error', 'Terjadi kesalahan jaringan.');
-    }
-  };
-
-  const checkDeposit = async () => {
-    if (!qrisData) return;
-    setCheckingDeposit(true);
-    try {
-      const r = await api('deposit_status', { deposit_id: qrisData.id });
-      setCheckingDeposit(false);
-      if (r.success && r.status === 'paid') {
-        setBalance(r.new_balance);
-        setQrisData(null);
-        setDepositAmount('');
-        showModal('success', 'Pembayaran Diterima', 'Deposit berhasil masuk ke saldo kamu!');
-      } else {
-        showModal('warning', 'Belum Terdeteksi', 'Pembayaran belum masuk. Tunggu beberapa saat dan cek kembali.');
-      }
-    } catch (e) {
-       setCheckingDeposit(false);
-       showModal('error', 'Error', 'Gagal mengecek status.');
+      showToast('error', 'Error', 'Terjadi kesalahan jaringan.');
     }
   };
 
@@ -605,7 +614,7 @@ export default function Page() {
     
     setQrisData(null); 
     setDepositAmount(''); 
-    showModal('success', 'Dibatalkan', 'Transaksi pembayaran berhasil dibatalkan.');
+    showToast('info', 'Dibatalkan', 'Transaksi pembayaran berhasil dibatalkan.');
   };
 
   const saveProfile = async () => {
@@ -613,9 +622,9 @@ export default function Page() {
     const r = await api('profile_update', { username });
     setSavingProfile(false);
     if (r.success) {
-      showModal('success', 'Berhasil', r.msg);
+      showToast('success', 'Berhasil', r.msg);
     } else {
-      showModal('error', 'Gagal', r.msg);
+      showToast('error', 'Gagal', r.msg);
     }
   };
 
@@ -627,9 +636,9 @@ export default function Page() {
     if (r.success) {
       setHasPassword(true);
       setCurPass(''); setProfileNewPass(''); setProfileConfirmPass('');
-      showModal('success', 'Berhasil', r.msg || 'Password berhasil disimpan');
+      showToast('success', 'Berhasil', r.msg || 'Password berhasil disimpan');
     } else {
-      showModal('error', 'Gagal', r.msg);
+      showToast('error', 'Gagal', r.msg);
     }
   };
 
@@ -677,6 +686,22 @@ export default function Page() {
   if (step === 'login') {
     return (
       <div className="auth-screen welcome-bg">
+        <div className="toast-container">
+          {toast && (
+            <div className="toast">
+              <div className={`toast-icon ${toast.type}`}>
+                {toast.type === 'error' && <IconCross />}
+                {toast.type === 'success' && <IconCheck />}
+                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
+                {toast.type === 'warning' && <IconWarning />}
+              </div>
+              <div className="toast-content">
+                <div className="toast-title">{toast.title}</div>
+                <div className="toast-msg">{toast.msg}</div>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Login Kembali 👋</div>
@@ -711,6 +736,22 @@ export default function Page() {
   if (step === 'register') {
     return (
       <div className="auth-screen welcome-bg">
+        <div className="toast-container">
+          {toast && (
+            <div className="toast">
+              <div className={`toast-icon ${toast.type}`}>
+                {toast.type === 'error' && <IconCross />}
+                {toast.type === 'success' && <IconCheck />}
+                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
+                {toast.type === 'warning' && <IconWarning />}
+              </div>
+              <div className="toast-content">
+                <div className="toast-title">{toast.title}</div>
+                <div className="toast-msg">{toast.msg}</div>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Daftar Akun Baru 🚀</div>
@@ -737,6 +778,22 @@ export default function Page() {
     const timerClass = countdown > 60 ? '' : countdown > 0 ? 'warning' : 'expired';
     return (
       <div className="auth-screen welcome-bg">
+        <div className="toast-container">
+          {toast && (
+            <div className="toast">
+              <div className={`toast-icon ${toast.type}`}>
+                {toast.type === 'error' && <IconCross />}
+                {toast.type === 'success' && <IconCheck />}
+                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
+                {toast.type === 'warning' && <IconWarning />}
+              </div>
+              <div className="toast-content">
+                <div className="toast-title">{toast.title}</div>
+                <div className="toast-msg">{toast.msg}</div>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Verifikasi OTP 📬</div>
@@ -772,6 +829,22 @@ export default function Page() {
     const isValid = setupUser.length > 2 && newPass.length >= 6 && isMatch;
     return (
       <div className="auth-screen welcome-bg">
+        <div className="toast-container">
+          {toast && (
+            <div className="toast">
+              <div className={`toast-icon ${toast.type}`}>
+                {toast.type === 'error' && <IconCross />}
+                {toast.type === 'success' && <IconCheck />}
+                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
+                {toast.type === 'warning' && <IconWarning />}
+              </div>
+              <div className="toast-content">
+                <div className="toast-title">{toast.title}</div>
+                <div className="toast-msg">{toast.msg}</div>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Lengkapi Profil ✍️</div>
@@ -807,6 +880,22 @@ export default function Page() {
   if (step === 'forgot') {
     return (
       <div className="auth-screen welcome-bg">
+        <div className="toast-container">
+          {toast && (
+            <div className="toast">
+              <div className={`toast-icon ${toast.type}`}>
+                {toast.type === 'error' && <IconCross />}
+                {toast.type === 'success' && <IconCheck />}
+                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
+                {toast.type === 'warning' && <IconWarning />}
+              </div>
+              <div className="toast-content">
+                <div className="toast-title">{toast.title}</div>
+                <div className="toast-msg">{toast.msg}</div>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Lupa Password 🔒</div>
@@ -831,6 +920,22 @@ export default function Page() {
     const isValid = newPass.length >= 6 && isMatch;
     return (
       <div className="auth-screen welcome-bg">
+        <div className="toast-container">
+          {toast && (
+            <div className="toast">
+              <div className={`toast-icon ${toast.type}`}>
+                {toast.type === 'error' && <IconCross />}
+                {toast.type === 'success' && <IconCheck />}
+                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
+                {toast.type === 'warning' && <IconWarning />}
+              </div>
+              <div className="toast-content">
+                <div className="toast-title">{toast.title}</div>
+                <div className="toast-msg">{toast.msg}</div>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Password Baru 🔐</div>
@@ -861,6 +966,23 @@ export default function Page() {
 
   return (
     <>
+      <div className="toast-container">
+        {toast && (
+          <div className="toast">
+            <div className={`toast-icon ${toast.type}`}>
+              {toast.type === 'error' && <IconCross />}
+              {toast.type === 'success' && <IconCheck />}
+              {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
+              {toast.type === 'warning' && <IconWarning />}
+            </div>
+            <div className="toast-content">
+              <div className="toast-title">{toast.title}</div>
+              <div className="toast-msg">{toast.msg}</div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="app-header">
         <div className="header-row">
           <div className="header-brand">
@@ -868,7 +990,7 @@ export default function Page() {
             <div className="header-title">WALZ <span>NEXUS</span></div>
           </div>
           <button className="theme-toggle" onClick={toggleTheme} title="Ganti Tema">
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === 'dark' ? <SvgSun /> : <SvgMoon />}
           </button>
         </div>
         
@@ -1050,9 +1172,9 @@ export default function Page() {
                   <img src={qrisData.qr_image || qrisData.qr_url} alt="QRIS" />
                 </div>
                 <div className="qris-amount">{fmt(qrisData.actual_amount)}</div>
-                <button className="btn btn-success" onClick={checkDeposit} disabled={checkingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
-                  {checkingDeposit ? <><LoadingSpinner style={{width:16, height:16}} /> Mengecek...</> : '✅ Cek Status Pembayaran'}
-                </button>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginBottom: 16 }}>
+                  Sistem mengecek pembayaran secara otomatis...
+                </div>
                 <button className="btn btn-danger" onClick={cancelDeposit} disabled={cancelingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
                   {cancelingDeposit ? <><LoadingSpinner style={{width:16, height:16}} /> Membatalkan...</> : '✖ Batalkan Transaksi'}
                 </button>
@@ -1211,8 +1333,8 @@ export default function Page() {
                             <span className="provider-id">ID: {prov.provider_id}</span>
                             <span className="provider-price">{fmt(prov.price)}</span>
                           </div>
-                          <button className="btn-order" disabled={orderingProv === prov.provider_id} onClick={() => buyNumber(c, prov)}>
-                            {orderingProv === prov.provider_id ? <LoadingSpinner style={{ width: 14, height: 14, borderWidth: 2 }} /> : 'Order'}
+                          <button className="btn-order" disabled={loadingOperators} onClick={() => handleOrderClick(c, prov)}>
+                            {loadingOperators && selectedOrderContext?.provider?.provider_id === prov.provider_id ? <LoadingSpinner style={{ width: 14, height: 14, borderWidth: 2 }} /> : 'Pilih'}
                           </button>
                         </div>
                       ))}
@@ -1221,6 +1343,24 @@ export default function Page() {
                 </div>
               );
             })
+          )}
+        </div>
+      </div>
+
+      <div className={`modal-overlay ${showOperatorModal ? 'open' : ''}`} onClick={() => setShowOperatorModal(false)}>
+        <div className={`modal-content ${showOperatorModal ? 'popIn' : ''}`} onClick={e => e.stopPropagation()} style={{ padding: '24px' }}>
+          <h3 style={{ marginBottom: '16px', fontSize: '1.15rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Pilih Operator Seluler</h3>
+          {loadingOperators ? (
+            <div className="loading-grid"><LoadingSpinner /></div>
+          ) : (
+            <div className="operator-grid">
+              {operators.map(op => (
+                <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op.name)}>
+                  <div className="operator-icon-placeholder">{op.name.substring(0,2).toUpperCase()}</div>
+                  <span>{op.name}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>
