@@ -173,7 +173,7 @@ body {
   object-position: center;
   display: block;
   position: relative;
-  z-index: 5;
+  z-index: 2;
   border: 2px solid rgba(79,140,255,0.6);
   box-shadow: 0 0 16px rgba(79,140,255,0.5);
   transition: transform 0.3s var(--ease-out), box-shadow 0.3s;
