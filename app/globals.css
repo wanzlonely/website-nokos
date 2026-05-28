@@ -169,15 +169,7 @@ body {
   box-shadow: var(--card-shadow);
 }
 
-.auth-logo-small {
-  display: flex; flex-direction: column; align-items: center; margin-bottom: 24px;
-}
-.auth-logo-small h1 {
-  font-family: var(--font-display);
-  font-size: 2rem; font-weight: 900;
-  letter-spacing: -0.03em; line-height: 1;
-}
-.auth-logo-small h1 span { color: var(--blue2); }
+.auth-logo-small-old-removed {
 
 .auth-card {
   width: 100%; max-width: 380px;
@@ -900,3 +892,156 @@ body {
 .mt-16 { margin-top: 16px; }
 
 ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+/* ===== WALZ SHOP LOGO ===== */
+.walz-hero-logo {
+  width: 100%; max-width: 340px;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(37,99,235,0.35), 0 0 0 1px rgba(255,255,255,0.1);
+  animation: slideDown 0.6s var(--ease-out) both;
+  margin-bottom: 8px;
+  position: relative;
+}
+.walz-hero-img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.4s var(--ease-out);
+}
+.walz-hero-logo:hover .walz-hero-img { transform: scale(1.03); }
+
+.auth-logo-small {
+  display: flex; flex-direction: column; align-items: center; margin-bottom: 24px;
+}
+.auth-logo-img {
+  height: 52px;
+  width: auto;
+  max-width: 220px;
+  border-radius: var(--r-md);
+  object-fit: cover;
+  object-position: left center;
+  box-shadow: 0 4px 18px rgba(37,99,235,0.22);
+}
+
+.header-logo-img {
+  height: 34px;
+  width: auto;
+  max-width: 130px;
+  border-radius: 8px;
+  object-fit: cover;
+  object-position: left center;
+  box-shadow: 0 2px 12px rgba(37,99,235,0.18);
+  margin-top: 2px;
+}
+
+/* ===== PAYMENT SUCCESS OVERLAY ===== */
+.success-notif-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.78);
+  backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeInBg 0.28s ease both;
+  overflow: hidden;
+}
+
+/* Confetti container */
+.success-confetti-wrap {
+  position: fixed; inset: 0; pointer-events: none; z-index: 10000; overflow: hidden;
+}
+
+@keyframes confettiFall {
+  0%   { transform: translateY(-24px) rotate(0deg) scaleX(1);   opacity: 1; }
+  40%  { transform: translateY(40vh)  rotate(240deg) scaleX(-1); opacity: 0.9; }
+  80%  { transform: translateY(80vh)  rotate(520deg) scaleX(1);  opacity: 0.5; }
+  100% { transform: translateY(105vh) rotate(720deg) scaleX(-1); opacity: 0; }
+}
+
+/* Success card */
+.success-notif-card {
+  position: relative; text-align: center;
+  padding: 52px 44px 42px;
+  animation: successCardPop 0.55s cubic-bezier(0.34,1.56,0.64,1) both;
+  z-index: 10001;
+}
+@keyframes successCardPop {
+  from { opacity: 0; transform: scale(0.5) translateY(24px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Ripples */
+.success-notif-ripple {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -60%);
+  width: 90px; height: 90px; border-radius: 50%;
+  border: 2px solid rgba(0,232,122,0.55);
+  animation: successRipple 1.6s ease-out infinite;
+  pointer-events: none;
+}
+.success-notif-ripple.delay1 { animation-delay: 0.45s; border-color: rgba(0,212,255,0.45); }
+.success-notif-ripple.delay2 { animation-delay: 0.9s;  border-color: rgba(79,140,255,0.38); }
+@keyframes successRipple {
+  0%   { transform: translate(-50%,-60%) scale(1);   opacity: 0.8; }
+  100% { transform: translate(-50%,-60%) scale(3.4); opacity: 0; }
+}
+
+/* Icon */
+.success-notif-icon {
+  width: 88px; height: 88px; border-radius: 50%;
+  background: linear-gradient(145deg, #059669, #00e87a);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px; position: relative; z-index: 2;
+  animation: successIconBounce 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.12s both;
+  box-shadow: 0 0 50px rgba(0,232,122,0.6), 0 0 100px rgba(0,232,122,0.25);
+}
+.success-notif-icon svg { width: 42px; height: 42px; stroke-width: 3.5; }
+@keyframes successIconBounce {
+  from { transform: scale(0.25) rotate(-20deg); opacity: 0; }
+  60%  { transform: scale(1.18) rotate(5deg); }
+  80%  { transform: scale(0.94) rotate(-2deg); }
+  to   { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* Emoji */
+.success-notif-emoji {
+  font-size: 2rem; margin-bottom: 10px;
+  animation: emojiPop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.4s both;
+  display: block;
+}
+@keyframes emojiPop {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Text */
+.success-notif-title {
+  font-family: var(--font-display); font-size: 1.65rem; font-weight: 900;
+  color: #fff; margin-bottom: 8px;
+  background: linear-gradient(135deg, #00e87a, #00d4ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  animation: fadeInUp 0.4s ease 0.35s both;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 12px rgba(0,232,122,0.5));
+}
+.success-notif-subtitle {
+  font-size: 0.9rem; color: rgba(255,255,255,0.78); font-weight: 600;
+  animation: fadeInUp 0.4s ease 0.45s both; margin-bottom: 6px;
+}
+.success-notif-amount {
+  font-family: var(--font-mono); font-size: 1.6rem; font-weight: 900;
+  color: #fff; margin-top: 16px;
+  animation: fadeInUp 0.4s ease 0.52s both;
+  background: linear-gradient(135deg, rgba(0,232,122,0.18), rgba(0,212,255,0.18));
+  padding: 10px 28px; border-radius: var(--r-full);
+  border: 1px solid rgba(0,232,122,0.35);
+  display: inline-block;
+  box-shadow: 0 0 24px rgba(0,232,122,0.25);
+  letter-spacing: -0.5px;
+}
+.success-notif-tap {
+  font-size: 0.68rem; color: rgba(255,255,255,0.38); font-weight: 600;
+  margin-top: 22px; letter-spacing: 0.04em; text-transform: uppercase;
+  animation: fadeInUp 0.4s ease 0.65s both;
+}
