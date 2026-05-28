@@ -2,22 +2,30 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 
 const api = async (endpoint, payload = {}) => {
-  const res = await fetch('/api', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ endpoint, ...payload }),
-    credentials: 'include',
-  });
-  return res.json();
+  try {
+    const res = await fetch('/api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint, ...payload }),
+      credentials: 'include',
+    });
+    return res.json();
+  } catch (e) {
+    return { success: false, msg: 'Koneksi gagal' };
+  }
 };
 const authApi = async (path, payload) => {
-  const res = await fetch(`/api/auth/${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    credentials: 'include',
-  });
-  return res.json();
+  try {
+    const res = await fetch(`/api/auth/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'include',
+    });
+    return res.json();
+  } catch (e) {
+    return { success: false, msg: 'Koneksi gagal' };
+  }
 };
 
 const fmt = n => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
@@ -727,7 +735,7 @@ export default function Page() {
   }, [services, query]);
 
   const filteredCountries = useMemo(() => {
-    return countries.filter(c => c.name.toLowerCase().includes(countryQuery.toLowerCase()));
+    return countries.filter(c => c.name?.toLowerCase().includes(countryQuery.toLowerCase()));
   }, [countries, countryQuery]);
 
   const filteredPpob = useMemo(() => {
