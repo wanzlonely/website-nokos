@@ -288,14 +288,18 @@ export async function POST(request) {
                 resData.data.status === 'paid'
               )
             ) {
-              await redis.hset(k, {
-                status: 'completed'
-              });
+              // Guard: re-read status before crediting to prevent double addBalance
+              const freshItem = await redis.hgetall(k);
+              if (freshItem && freshItem.status === 'pending') {
+                await redis.hset(k, {
+                  status: 'completed'
+                });
 
-              await addBalance(
-                user.id,
-                Number(item.diterima || item.amount)
-              );
+                await addBalance(
+                  user.id,
+                  Number(item.diterima || item.amount)
+                );
+              }
 
               item.status = 'completed';
             } else if (
@@ -484,6 +488,14 @@ export async function POST(request) {
       const dep = await redis.hgetall(
         `deposit:${payload.deposit_id}`
       );
+
+      // Security: pastikan deposit ini milik user yang login
+      if (!dep || dep.userId !== user.id) {
+        return NextResponse.json({
+          success: false,
+          msg: 'Deposit tidak valid'
+        });
+      }
 
       if (
         dep &&
