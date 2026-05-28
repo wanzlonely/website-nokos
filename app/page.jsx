@@ -85,13 +85,15 @@ const formatTime = secs => {
 };
 
 const formatReceiptDate = (ts) => {
-  if(!ts) return '';
+  if(!ts) return '-';
   const d = new Date(Number(ts));
+  if(isNaN(d.getTime())) return '-';
   const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   return `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()}, ${d.getHours().toString().padStart(2,'0')}.${d.getMinutes().toString().padStart(2,'0')} WIB`;
 };
 
 const getOpInitials = (name) => {
+  if (!name || typeof name !== 'string') return 'AN';
   const n = name.toLowerCase();
   if(n === 'any') return 'AN';
   if(n.includes('three') || n === '3') return '3';
@@ -108,7 +110,7 @@ const getOpInitials = (name) => {
 function EyeToggle({ show, onToggle }) {
   return (
     <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
-      {show ? '🙈' : '🐵'}
+      {show ? '🐵' : '🙈'}
     </button>
   );
 }
@@ -117,7 +119,6 @@ function LoadingSpinner({ style }) {
   return <div className="loading-spinner" style={style} />;
 }
 
-// SVG Icons
 const SvgProduct = () => (
   <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
     <rect x="5" y="2" width="14" height="20" rx="3" fill="currentColor" fillOpacity="0.15"/>
@@ -384,6 +385,44 @@ export default function Page() {
   }, [historyItems]);
 
   useEffect(() => {
+    let interval;
+    if (qrisData) {
+      interval = setInterval(async () => {
+        try {
+          const r = await api('deposit_status', { deposit_id: qrisData.id });
+          if (r.success && r.status === 'paid') {
+            setBalance(r.new_balance);
+            setQrisData(null);
+            setDepositAmount('');
+            showToast('success', 'Berhasil', 'Deposit berhasil masuk!');
+          }
+        } catch (error) {}
+      }, 4000);
+    }
+    return () => clearInterval(interval);
+  }, [qrisData]);
+
+  useEffect(() => {
+    let interval;
+    if (order && !order.otp_code) {
+      interval = setInterval(async () => {
+        try {
+          const r = await api('order_status', { order_id: order.order_id });
+          if (r.success && r.data?.otp_code) {
+            setOrder(prev => ({ ...prev, otp_code: r.data.otp_code, otp_msg: r.data.otp_msg }));
+            showToast('success', 'SMS Masuk!', 'Kode OTP berhasil diterima.');
+            api('balance').then(res => res.success && setBalance(res.data.balance));
+          } else if (r.success && r.data?.status === 'cancel') {
+             setOrder(null);
+             showToast('warning', 'Dibatalkan', 'Pesanan telah dibatalkan.');
+          }
+        } catch (error) {}
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [order]);
+
+  useEffect(() => {
     if (!showSheet) { 
       setExpandedCountry(null); 
       setCountries([]); 
@@ -593,7 +632,7 @@ export default function Page() {
       const r = await api('operators', { country: country.name, provider_id: provider.provider_id });
       setLoadingOperators(false);
       if (r.success && Array.isArray(r.data) && r.data.length > 0) {
-        setOperators(r.data);
+        setOperators([{ id: 'any', name: 'any' }, ...r.data]);
       } else {
         setOperators([{ id: 'any', name: 'any' }]);
       }
@@ -1067,7 +1106,7 @@ export default function Page() {
             <div className="header-online"><div className="header-dot" /><span>Online</span></div>
             <div className="header-title">WALZ <span>NEXUS</span></div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '12px' }}>
             <button className="theme-toggle" onClick={() => setTab('activity')} title="Riwayat">
               <SvgActivity />
             </button>
@@ -1109,12 +1148,7 @@ export default function Page() {
               <span className="search-icon">⌕</span>
               <input value={query} placeholder="Cari layanan..." onChange={e => setQuery(e.target.value)} />
             </div>
-            {loadingSvcs ? (
-              <div className="loading-grid">
-                <LoadingSpinner />
-                <p className="loading-text">Memuat layanan...</p>
-              </div>
-            ) : filteredSvcs.length === 0 ? (
+            {filteredSvcs.length === 0 && !loadingSvcs ? (
               <div className="empty-state">
                 <span className="icon">🔍</span>
                 <p>Tidak ada layanan ditemukan</p>
@@ -1138,6 +1172,69 @@ export default function Page() {
           </div>
         )}
 
+        {tab === 'virtual' && order && (
+          <div className="active-order-wrap">
+            <div className="ao-header">
+              <div className="ao-title">Pesanan Pending</div>
+              <button className="ao-refresh" onClick={() => api('balance').then(r => r.success && setBalance(r.data.balance))}>
+                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              </button>
+            </div>
+            <div className="ao-body">
+              <div className="ao-row">
+                 <div className="ao-num-wrap" onClick={() => { navigator.clipboard.writeText(order.phone_number); showToast('success', 'Tersalin', 'Nomor disalin ke clipboard'); }}>
+                    {getFlag(order.country)} {order.phone_number} 
+                    <svg width="18" height="18" fill="none" stroke="var(--text-3)" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                 </div>
+                 <div className="ao-timer">{formatTime(orderExpiry)}</div>
+              </div>
+              <div className="ao-row">
+                 <div className="ao-prov-wrap">
+                    <span style={{ fontSize: '1.2rem' }}>📡</span> {order.operator || 'Any'}
+                 </div>
+                 <div className="ao-price">{fmt(order.price)}</div>
+              </div>
+
+              <div className="ao-status-box">
+                 <div className="ao-status-top">
+                    <div className="ao-svc-name">
+                       <img src={order.service_img} alt="" style={{ width: 24, height: 24, borderRadius: 4 }} />
+                       {order.service_name}
+                    </div>
+                    {order.otp_code ? (
+                       <div className="ao-status-text" style={{ color: 'var(--green)' }}>Selesai <IconCheck /></div>
+                    ) : (
+                       <div className="ao-status-text">Menunggu <IconClock /></div>
+                    )}
+                 </div>
+                 
+                 {order.otp_code ? (
+                    <div style={{ background: 'var(--green-soft)', padding: '16px', borderRadius: '12px', marginTop: '10px' }}>
+                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.4rem', fontWeight: 900, color: 'var(--green)', letterSpacing: '4px', textAlign: 'center' }}>{order.otp_code}</div>
+                       <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', textAlign: 'center', marginTop: '4px', fontWeight: 600 }}>{order.otp_msg}</div>
+                    </div>
+                 ) : (
+                    <div className="ao-status-desc">
+                       {cancelCooldown > 0 ? `Tunggu ${formatTime(cancelCooldown)} sebelum klik batal.` : 'Kamu sekarang bisa membatalkan pesanan ini.'}
+                    </div>
+                 )}
+              </div>
+
+              <div className="ao-actions">
+                 <button className="ao-btn ao-btn-lagi" onClick={() => setOrder(null)}>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Beli lagi
+                 </button>
+                 {!order.otp_code && (
+                     <button className="ao-btn ao-btn-batal" disabled={cancelCooldown > 0 || cancelingOrder} onClick={cancelOrder}>
+                        {cancelingOrder ? <LoadingSpinner style={{ width: 18, height: 18 }} /> : <><svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg> Batal</>}
+                     </button>
+                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {tab === 'ppob' && (
           <div style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
             <div className="section-hd">
@@ -1148,7 +1245,7 @@ export default function Page() {
             {ppobError ? (
                <div className="empty-state" style={{ padding: '60px 0' }}>
                  <div className="modal-icon text-amber" style={{ animation: 'none' }}>
-                    <IconWarning />
+                    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="48" height="48"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                  </div>
                  <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 8, marginTop: 16 }}>Sistem Maintenance</h3>
                  <p style={{ textAlign: 'center', padding: '0 20px' }}>{ppobError}<br/>Silakan coba lagi nanti.</p>
@@ -1160,12 +1257,7 @@ export default function Page() {
                   <span className="search-icon">⌕</span>
                   <input value={ppobQuery} placeholder="Cari nama atau brand produk..." onChange={e => setPpobQuery(e.target.value)} />
                 </div>
-                {ppobLoading ? (
-                  <div className="loading-grid">
-                    <LoadingSpinner />
-                    <p className="loading-text">Memuat produk PPOB...</p>
-                  </div>
-                ) : filteredPpob.length === 0 ? (
+                {filteredPpob.length === 0 && !ppobLoading ? (
                   <div className="empty-state">
                     <span className="icon">🔍</span>
                     <p>Tidak ada produk ditemukan</p>
@@ -1198,7 +1290,7 @@ export default function Page() {
                   <input type="number" value={depositAmount} placeholder="Contoh: 10000" onChange={e => setDepositAmount(e.target.value)} />
                 </div>
                 <div className="deposit-amounts">
-                  {[2000, 10000, 20000, 50000, 100000, 200000].map(amt => (
+                  {[2000, 5000, 10000, 20000, 50000, 100000].map(amt => (
                     <button key={amt} className={`amount-chip ${depositAmount == amt ? 'active' : ''}`} onClick={() => setDepositAmount(String(amt))}>
                       {fmt(amt).replace('Rp ', 'Rp')}
                     </button>
@@ -1233,9 +1325,7 @@ export default function Page() {
             <div className="section-hd">
               <h2>Riwayat Aktivitas</h2>
             </div>
-            {loadingHistory ? (
-              <div className="loading-grid"><LoadingSpinner /></div>
-            ) : historyItems.length === 0 ? (
+            {historyItems.length === 0 && !loadingHistory ? (
               <div className="empty-state">
                 <span className="icon">📝</span>
                 <p>Belum ada riwayat transaksi</p>
@@ -1448,7 +1538,7 @@ export default function Page() {
               )}
 
               {selectedHistoryItem.itemType === 'order' && selectedHistoryItem.status === 'waiting' && (
-                <div className="qris-blue-card" style={{ background: 'var(--glass)', color: 'var(--text)', border: '1px solid var(--border)' }}>
+                <div className="qris-blue-card" style={{ background: 'var(--glass)', color: 'var(--text)', border: '1px solid var(--border)', padding: '16px' }}>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-3)', marginBottom: 16 }}>Menunggu SMS verifikasi masuk. Anda dapat membatalkan jika terlalu lama.</div>
                   <button className="btn btn-danger" onClick={() => cancelHistoryOrder(selectedHistoryItem.id)} disabled={busy} style={{ width: '100%' }}>Batalkan Pesanan</button>
                 </div>
@@ -1504,12 +1594,7 @@ export default function Page() {
           </div>
         </div>
         <div className="sheet-body">
-          {loadingCountries ? (
-            <div className="sheet-loading">
-              <LoadingSpinner />
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>Memuat server...</p>
-            </div>
-          ) : filteredCountries.length === 0 ? (
+          {filteredCountries.length === 0 && !loadingCountries ? (
             <div className="empty-state" style={{ padding: '32px 0' }}>
               <span className="icon">🌐</span>
               <p>Tidak ada stok untuk pencarian tersebut</p>
@@ -1558,7 +1643,7 @@ export default function Page() {
         <div className={`modal-content ${showOperatorModal ? 'popIn' : ''}`} onClick={e => e.stopPropagation()} style={{ padding: '24px' }}>
           <h3 style={{ marginBottom: '16px', fontSize: '1.15rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Pilih Operator Seluler</h3>
           {loadingOperators ? (
-            <div className="loading-grid"><LoadingSpinner /></div>
+            <div className="loading-grid" style={{ padding: '24px 0' }}><LoadingSpinner /></div>
           ) : (
             <div className="operator-grid">
               {operators.map(op => (
@@ -1572,24 +1657,6 @@ export default function Page() {
         </div>
       </div>
 
-      <div className={`modal-overlay ${modal.show ? 'open' : ''}`}>
-        <div className={`modal-content ${modal.show ? 'popIn' : ''}`}>
-          <div className={`modal-svg-wrap ${modal.type}`}>
-            {modal.type === 'success' && <IconCheck />}
-            {modal.type === 'error' && <IconCross />}
-            {modal.type === 'warning' && <IconWarning />}
-            {modal.type === 'info' && <span style={{ fontSize: '30px' }}>ℹ️</span>}
-          </div>
-          <h3>{modal.title}</h3>
-          <p>{modal.msg}</p>
-          <div className="modal-actions">
-            {modal.onConfirm && <button className="btn btn-secondary" onClick={closeModal} style={{ borderRadius: 'var(--r-full)' }}>Nanti Saja</button>}
-            <button className="btn btn-primary" onClick={() => { if(modal.onConfirm) modal.onConfirm(); closeModal(); }} style={{ borderRadius: 'var(--r-full)', marginBottom: 0 }}>
-              {modal.onConfirm ? 'Lanjutkan' : 'Tutup'}
-            </button>
-          </div>
-        </div>
-      </div>
     </>
   );
 }
