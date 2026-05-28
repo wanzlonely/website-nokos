@@ -409,7 +409,7 @@ body {
 
 /* Toast Realtime Animation */
 .toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 360px; pointer-events: none; }
-.toast { background: var(--glass); border: 1px solid var(--border2); border-radius: var(--r-xl); padding: 14px 18px; display: flex; align-items: center; gap: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); animation: toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; backdrop-filter: blur(10px); }
+.toast { background: var(--glass); border: 1px solid var(--border2); border-radius: var(--r-xl); padding: 14px 18px; display: flex; align-items: center; gap: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); animation: toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; backdrop-filter: blur(10px); pointer-events: all; }
 .toast-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .toast-icon.error { background: var(--red-soft); color: var(--red); }
 .toast-icon.success { background: var(--green-soft); color: var(--green); }
@@ -420,7 +420,9 @@ body {
 .toast-msg { font-size: 0.75rem; font-weight: 500; color: var(--text-3); line-height: 1.3; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-.sheet-footer { padding: 16px 20px 0; flex-shrink: 0; border-top: 1px solid var(--border); }
+.section-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-hd h2 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 900; }
+.section-hd .count { font-size: 0.75rem; color: var(--text-3); font-weight: 700; background: var(--glass2); padding: 4px 10px; border-radius: var(--r-full); }
 
 /* Custom Animasi Pop Up Modal Super Keren */
 .modal-overlay {
@@ -525,6 +527,31 @@ body {
 .receipt-footer-text { font-size: 0.7rem; color: var(--text-3); text-align: center; margin-top: 32px; font-weight: 600; }
 .receipt-actions { display: flex; gap: 12px; margin-top: 24px; }
 .receipt-actions .btn { flex: 1; border-radius: var(--r-full); height: 50px; }
+
+.qris-blue-card { background: #1d4ed8; color: #fff; border-radius: var(--r-xl); padding: 24px; text-align: center; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(29,78,216,0.3); }
+.qris-blue-title { font-size: 1.15rem; font-weight: 900; margin-bottom: 6px; font-family: var(--font-display); }
+.qris-blue-nmid { font-size: 0.75rem; opacity: 0.85; margin-bottom: 24px; font-weight: 600; }
+.qris-blue-qr-wrap { background: #fff; padding: 16px; border-radius: 12px; display: inline-block; width: 100%; max-width: 260px; margin-bottom: 24px; }
+.qris-blue-qr-wrap img { width: 100%; display: block; border-radius: 4px; }
+.qris-blue-total { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-top: 1px solid rgba(255,255,255,0.2); border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 20px; font-weight: 800; font-size: 1.1rem; }
+
+.bottom-nav {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  width: calc(100% - 32px); max-width: 440px; height: 75px;
+  background: var(--glass); backdrop-filter: blur(20px);
+  border: 1px solid var(--border2); border-radius: var(--r-full);
+  display: flex; align-items: center; justify-content: space-around; padding: 0 10px; z-index: 100;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 8px 4px; border-radius: var(--r-md); font-size: 0.65rem; font-weight: 800;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); transition: all 0.2s var(--ease-out);
+}
+.nav-item:hover { color: var(--text-2); }
+.nav-item.active { color: var(--blue2); }
+.nav-item.active .nav-icon-wrap { background: var(--blue-soft); color: var(--blue2); border-radius: var(--r-full); transform: translateY(-4px); }
+.nav-icon-wrap { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; transition: all 0.2s var(--ease-out); }
 
 .text-green { color: var(--green); }
 .text-red { color: var(--red); }
