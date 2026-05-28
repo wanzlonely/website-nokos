@@ -593,3 +593,135 @@ body {
 .mt-16 { margin-top: 16px; }
 
 ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+/* ===== MISSING CLASSES FIX ===== */
+
+/* Empty State */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 48px 20px; text-align: center;
+  color: var(--text-3);
+}
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.7; }
+.empty-state p { font-size: 0.9rem; font-weight: 600; color: var(--text-3); line-height: 1.5; }
+
+/* Profile */
+.profile-wrap { display: flex; flex-direction: column; gap: 16px; }
+.profile-section {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--r-xl); overflow: hidden;
+}
+.profile-section-title {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 18px; font-size: 0.82rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2);
+  border-bottom: 1px solid var(--border); background: var(--glass2);
+}
+.profile-section-body { padding: 18px; }
+
+/* Deposit / Top Up */
+.deposit-wrap { display: flex; flex-direction: column; gap: 0; }
+.deposit-card {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--r-xl); padding: 20px;
+}
+
+/* Activity */
+.activity-wrap { display: flex; flex-direction: column; gap: 0; }
+
+/* QRIS Card — fix image terlalu besar */
+.qris-card {
+  background: var(--qris-bg, #fff); border-radius: var(--r-xl);
+  padding: 14px; margin: 0 auto 12px;
+  width: 100%; max-width: 240px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  border: 1px solid var(--border);
+}
+.qris-card img {
+  width: 100%; height: auto; display: block; border-radius: 8px;
+}
+.qris-amount {
+  font-family: var(--font-mono); font-size: 1.6rem; font-weight: 900;
+  color: var(--text); text-align: center; margin-bottom: 4px;
+}
+
+/* Fix: operator-icon-placeholder (was missing, only operator-icon-wrap existed) */
+.operator-icon-placeholder {
+  width: 44px; height: 44px; border-radius: 50%; overflow: hidden;
+  background: var(--glass2); display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.operator-icon-placeholder img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+
+/* Operator grid — kompak, tidak terlalu besar */
+.operator-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-top: 8px;
+}
+.operator-card {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 10px 6px 8px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; transition: all 0.2s; cursor: pointer;
+}
+.operator-card:hover { background: var(--blue-soft); border-color: var(--border-blue); }
+.operator-card:active { transform: scale(0.96); }
+.operator-card span {
+  font-size: 0.68rem; font-weight: 700; color: var(--text-2);
+  text-align: center; line-height: 1.2; width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-transform: capitalize;
+}
+.operator-icon-placeholder {
+  width: 38px; height: 38px; border-radius: 50%; overflow: hidden;
+  background: #fff; display: flex; align-items: center;
+  justify-content: center; border: 1px solid var(--border);
+}
+.operator-icon-placeholder img { width: 100%; height: 100%; object-fit: contain; padding: 2px; }
+
+/* Modal operator — ukuran lebih terkontrol */
+.modal-overlay .modal-content { max-height: 70vh; overflow-y: auto; }
+
+/* Deposit cancel button area */
+.qris-cancel-btn {
+  width: 100%; margin-top: 12px;
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--text-3); padding: 12px; border-radius: var(--r-full);
+  font-size: 0.85rem; font-weight: 700; cursor: pointer;
+  transition: all 0.2s;
+}
+.qris-cancel-btn:hover { background: var(--red-soft); border-color: rgba(239,68,68,0.3); color: var(--red); }
+
+/* Fix country-item di bottom sheet agar tidak terlalu besar */
+.country-item { padding: 12px 14px; }
+.country-flag { font-size: 1.3rem; }
+.country-name { font-size: 0.85rem; }
+.country-price { font-size: 0.8rem; }
+.country-stock { font-size: 0.65rem; }
+
+/* Provider item lebih kompak */
+.provider-item { padding: 8px 12px; }
+.provider-id { font-size: 0.7rem; }
+.provider-price { font-size: 0.8rem; }
+
+/* Section header fix */
+.section-header-block h2 { font-size: 1.1rem; }
+
+/* Balance amount font size fix — terlalu besar di lebar sempit */
+.balance-amount { font-size: 1.85rem; }
+
+/* Input label uppercase lebih kecil */
+.input-field label { font-size: 0.72rem; letter-spacing: 0.05em; }
+
+/* History amount fix */
+.history-amt { font-size: 0.85rem; }
+.history-title { font-size: 0.85rem; }
+
+/* Animation */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
