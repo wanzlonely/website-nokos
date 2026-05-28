@@ -741,9 +741,9 @@ export default function Page() {
           const required = r.required ? Number(r.required) : null;
           const kekurangan = required ? Math.max(0, required - balance) : null;
           const detailMsg = kekurangan && kekurangan > 0
-            ? `Saldo kamu ${fmt(balance)}, butuh ${fmt(required)}. Kekurangan ${fmt(kekurangan)}. Top up sekarang yuk! 💸`
+            ? `Saldo kamu ${fmt(balance)}, butuh ${fmt(required)}. Kekurangan ${fmt(kekurangan)}. Top up sekarang yuk!`
             : 'Saldo kamu kurang untuk membeli nomor ini. Yuk top up dulu agar bisa bertransaksi dengan lancar.';
-          showModal('warning', 'Saldo Tidak Cukup! 💸', detailMsg, () => setTab('deposit'));
+          showModal('warning', 'Saldo Tidak Cukup!', detailMsg, () => setTab('deposit'));
         } else {
           showToast('error', 'Pesanan Gagal', r.msg || 'Stock penyedia habis, tunggu beberapa saat.');
         }
@@ -1922,60 +1922,53 @@ export default function Page() {
       </div>
 
     {/* ===== GLOBAL MODAL (Saldo Tidak Cukup, dll) ===== */}
-    <div className={`modal-overlay ${modal.show ? 'open' : ''}`} onClick={closeModal}>
-      <div className={`modal-content ${modal.show ? 'popIn' : ''}`} onClick={e => e.stopPropagation()}>
-
-        {/* Icon animasi */}
-        <div className={`modal-svg-wrap ${modal.type}`} style={{ width: 76, height: 76 }}>
-          {modal.type === 'warning' && (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 38, height: 38 }}>
-              <rect x="2" y="9" width="20" height="13" rx="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 9V7a5 5 0 0110 0v2"/>
-              <circle cx="12" cy="15.5" r="1.5" fill="currentColor" stroke="none"/>
-            </svg>
+    {modal.show && (
+      <div className="modal-overlay open" onClick={closeModal}>
+        <div className="modal-content popIn" onClick={e => e.stopPropagation()}>
+          <div className={`modal-svg-wrap ${modal.type}`} style={{ width: 76, height: 76 }}>
+            {modal.type === 'warning' && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ width: 38, height: 38 }}>
+                <rect x={2} y={9} width={20} height={13} rx={2.5} strokeLinecap="round" strokeLinejoin="round"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 9V7a5 5 0 0110 0v2"/>
+                <circle cx={12} cy={15.5} r={1.5} fill="currentColor" stroke="none"/>
+              </svg>
+            )}
+            {modal.type === 'error' && <IconCross />}
+            {modal.type === 'success' && <IconCheck />}
+            {modal.type === 'info' && <span style={{ fontSize: 32 }}>{'ℹ️'}</span>}
+          </div>
+          <h3 style={{ fontSize: '1.22rem' }}>{modal.title}</h3>
+          <p style={{ fontSize: '0.88rem', marginBottom: modal.onConfirm ? 20 : 24 }}>{modal.msg}</p>
+          {modal.onConfirm ? (
+            <div className="modal-actions">
+              <button className="btn btn-secondary" style={{ height: 48 }} onClick={closeModal}>
+                Nanti
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{
+                  height: 48,
+                  background: 'linear-gradient(135deg, #ffb340 0%, #ff7c20 100%)',
+                  border: 'none',
+                  fontWeight: 800,
+                  letterSpacing: '0.02em',
+                  boxShadow: '0 4px 18px rgba(255,140,32,0.35)',
+                }}
+                onClick={() => { if (modal.onConfirm) modal.onConfirm(); closeModal(); }}
+              >
+                {'💳'} Top Up Sekarang
+              </button>
+            </div>
+          ) : (
+            <div className="modal-actions">
+              <button className="btn btn-primary" style={{ height: 48 }} onClick={closeModal}>
+                Oke, Mengerti
+              </button>
+            </div>
           )}
-          {modal.type === 'error' && <IconCross />}
-          {modal.type === 'success' && <IconCheck />}
-          {modal.type === 'info' && <span style={{ fontSize: 32 }}>ℹ️</span>}
         </div>
-
-        <h3 style={{ fontSize: '1.22rem' }}>{modal.title}</h3>
-        <p style={{ fontSize: '0.88rem', marginBottom: modal.onConfirm ? 20 : 24 }}>{modal.msg}</p>
-
-        {/* Tombol aksi */}
-        {modal.onConfirm ? (
-          <div className="modal-actions">
-            <button
-              className="btn btn-secondary"
-              style={{ height: 48 }}
-              onClick={closeModal}
-            >
-              Nanti
-            </button>
-            <button
-              className="btn btn-primary"
-              style={{
-                height: 48,
-                background: 'linear-gradient(135deg, #ffb340 0%, #ff7c20 100%)',
-                border: 'none',
-                fontWeight: 800,
-                letterSpacing: '0.02em',
-                boxShadow: '0 4px 18px rgba(255,140,32,0.35)',
-              }}
-              onClick={() => { modal.onConfirm(); closeModal(); }}
-            >
-              🎯 Top Up Sekarang
-            </button>
-          </div>
-        ) : (
-          <div className="modal-actions">
-            <button className="btn btn-primary" style={{ height: 48 }} onClick={closeModal}>
-              Oke, Mengerti
-            </button>
-          </div>
-        )}
       </div>
-    </div>
+    )}
 
     </>
   );
