@@ -341,10 +341,10 @@ export default function Page() {
     return () => clearInterval(t);
   }, []);
 
-  const fetchHistory = async () => {
-    setLoadingHistory(true);
+  const fetchHistory = async (showLoader = false) => {
+    if (showLoader) setLoadingHistory(true);
     const r = await api('history');
-    setLoadingHistory(false);
+    if (showLoader) setLoadingHistory(false);
     if (r.success && Array.isArray(r.data)) {
       setHistoryItems(r.data);
     }
@@ -353,8 +353,8 @@ export default function Page() {
   useEffect(() => {
     let interval;
     if (tab === 'activity') {
-      fetchHistory();
-      interval = setInterval(fetchHistory, 5000);
+      fetchHistory(false); // silent, no spinner
+      interval = setInterval(() => fetchHistory(false), 5000);
     }
     return () => clearInterval(interval);
   }, [tab]);
@@ -612,12 +612,21 @@ export default function Page() {
   const handleOrderClick = async (country, provider) => {
     setSelectedOrderContext({ country, provider });
     setShowOperatorModal(true);
+    setOperators([]);
     setLoadingOperators(true);
     try {
       const r = await api('operators', { country: country.name, provider_id: provider.provider_id });
       setLoadingOperators(false);
       if (r.success && Array.isArray(r.data) && r.data.length > 0) {
-        setOperators([{ id: 'any', name: 'any' }, ...r.data]);
+        // API already includes 'any' as first item — deduplicate to be safe
+        const seen = new Set();
+        const deduped = r.data.filter(op => {
+          const key = op.name?.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setOperators(deduped);
       } else {
         setOperators([{ id: 'any', name: 'any' }]);
       }
@@ -1127,7 +1136,7 @@ export default function Page() {
               </div>
             </div>
             <div className="balance-right">
-              <button className="btn-topup-new" onClick={() => setTab('deposit')}>
+              <button className="btn-topup-new" onClick={() => setTab('deposit')} style={{ whiteSpace: 'nowrap' }}>
                 <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="18"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
                 Isi Saldo
               </button>
@@ -1298,16 +1307,33 @@ export default function Page() {
               </div>
             ) : (
               <div className="deposit-card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                   Scan QRIS untuk Bayar
                 </div>
                 <div className="qris-card">
-                  <img src={qrisData.qr_image || qrisData.qr_url} alt="QRIS" />
+                  <img
+                    src={qrisData.qr_image || qrisData.qr_url}
+                    alt="QRIS"
+                    style={{ width: '100%', maxWidth: 260, height: 'auto', display: 'block', margin: '0 auto', borderRadius: 12 }}
+                    onError={e => { e.target.style.opacity = '0.3'; }}
+                  />
                 </div>
-                <div className="qris-amount">{fmt(qrisData.actual_amount)}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginBottom: 16 }}>
+                <div className="qris-amount" style={{ fontSize: '1.5rem', fontWeight: 900, margin: '14px 0 4px' }}>{fmt(qrisData.actual_amount)}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginBottom: 20 }}>
                   Sistem mengecek pembayaran secara otomatis...
                 </div>
+                <button
+                  className="btn btn-secondary"
+                  style={{ borderRadius: 'var(--r-full)', width: '100%' }}
+                  onClick={async () => {
+                    const depId = qrisData.id;
+                    setQrisData(null);
+                    setDepositAmount('');
+                    if (depId) await api('deposit_cancel', { deposit_id: depId });
+                  }}
+                >
+                  ✕ Batalkan Pembayaran
+                </button>
               </div>
             )}
           </div>
@@ -1318,10 +1344,11 @@ export default function Page() {
             <div className="section-header-block">
               <h2>Riwayat Aktivitas</h2>
             </div>
-            {historyItems.length === 0 && !loadingHistory ? (
-              <div className="empty-state">
-                <span className="icon">📝</span>
-                <p>Belum ada riwayat transaksi</p>
+            {historyItems.length === 0 ? (
+              <div className="empty-state" style={{ paddingTop: 60 }}>
+                <span className="icon" style={{ fontSize: '3rem' }}>📋</span>
+                <p style={{ marginTop: 12, fontWeight: 600 }}>Belum ada transaksi</p>
+                <p style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: 4 }}>Transaksi kamu akan muncul di sini</p>
               </div>
             ) : (
               <div className="history-list">
@@ -1358,12 +1385,34 @@ export default function Page() {
 
         {tab === 'profile' && (
           <div className="profile-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            <div className="profile-avatar-row">
-              <div className="profile-avatar">
+            {/* Avatar card */}
+            <div style={{
+              background: 'linear-gradient(135deg, var(--blue1) 0%, var(--blue2) 100%)',
+              borderRadius: 20,
+              padding: '28px 20px 24px',
+              margin: '0 0 20px',
+              textAlign: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                width: 72, height: 72,
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.2)',
+                border: '3px solid rgba(255,255,255,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '2rem', fontWeight: 900, color: '#fff',
+                margin: '0 auto 12px',
+                backdropFilter: 'blur(4px)',
+              }}>
                 {username ? username[0].toUpperCase() : user?.email?.[0]?.toUpperCase() || '?'}
               </div>
-              <div className="profile-name">{username || 'Pengguna'}</div>
-              <div className="profile-email">{user?.email}</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: 4 }}>
+                {username || 'Pengguna'}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)', fontWeight: 500 }}>
+                {user?.email}
+              </div>
             </div>
 
             <div className="profile-section">
@@ -1379,7 +1428,7 @@ export default function Page() {
                 </div>
                 <div className="input-field">
                   <label>Email</label>
-                  <input type="email" value={user?.email || ''} disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} />
+                  <input type="email" value={user?.email || ''} disabled style={{ opacity: 0.45, cursor: 'not-allowed' }} />
                 </div>
                 <button className="btn btn-primary" onClick={saveProfile} disabled={savingProfile} style={{ borderRadius: 'var(--r-full)', marginTop: 8 }}>
                   {savingProfile ? <><LoadingSpinner style={{width:16, height:16}} /> Menyimpan...</> : '💾 Simpan Profil'}
@@ -1414,21 +1463,21 @@ export default function Page() {
                   <label>Konfirmasi Password</label>
                   <div className="input-icon-wrap">
                     <input type={showNewPass ? 'text' : 'password'} value={profileConfirmPass} placeholder="Ulangi password baru" onChange={e => setProfileConfirmPass(e.target.value)} />
+                    <EyeToggle show={showNewPass} onToggle={() => setShowNewPass(v => !v)} />
                   </div>
                 </div>
                 {profileConfirmPass && profileNewPass !== profileConfirmPass && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
+                {profileConfirmPass && profileNewPass === profileConfirmPass && profileNewPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
                 <button className="btn btn-primary" onClick={savePassword} disabled={savingPass || profileNewPass.length < 6 || profileNewPass !== profileConfirmPass || (hasPassword && !curPass)} style={{ borderRadius: 'var(--r-full)', marginTop: 8 }}>
                   {savingPass ? <><LoadingSpinner style={{width:16, height:16}} /> Menyimpan...</> : '🔐 Simpan Password'}
                 </button>
               </div>
             </div>
 
-            <div className="profile-section">
-              <div className="profile-section-body">
-                <button className="btn btn-danger" onClick={logout} style={{ marginBottom: 0, borderRadius: 'var(--r-full)' }}>🚪 Keluar dari Akun</button>
-              </div>
+            <div style={{ padding: '0 0 8px' }}>
+              <button className="btn btn-danger" onClick={logout} style={{ marginBottom: 0, borderRadius: 'var(--r-full)', width: '100%' }}>🚪 Keluar dari Akun</button>
             </div>
-            <div style={{ height: 16 }} />
+            <div style={{ height: 24 }} />
           </div>
         )}
       </div>
