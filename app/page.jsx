@@ -359,7 +359,7 @@ export default function Page() {
   useEffect(() => {
     let interval;
     if (tab === 'activity') {
-      fetchHistory(false); // silent, no spinner
+      fetchHistory(false);
       interval = setInterval(() => fetchHistory(false), 5000);
     }
     return () => clearInterval(interval);
@@ -375,20 +375,44 @@ export default function Page() {
     }
   }, [historyItems]);
 
+  // Polling deposit realtime di background untuk receipt aktif
+  useEffect(() => {
+    let interval;
+    if (selectedHistoryItem && selectedHistoryItem.itemType === 'deposit' && (selectedHistoryItem.status === 'pending' || selectedHistoryItem.status === 'waiting')) {
+      interval = setInterval(async () => {
+        try {
+          const r = await api('deposit_status', { deposit_id: selectedHistoryItem.id });
+          const newStatus = r.status || r.data?.status;
+          if (r.success && (newStatus === 'paid' || newStatus === 'success' || newStatus === 'completed')) {
+            fetchHistory();
+            api('balance').then(res => res.success && setBalance(res.data.balance));
+            showToast('success', 'Berhasil', 'Pembayaran telah diterima!');
+          } else if (r.success && (newStatus === 'cancel' || newStatus === 'canceled')) {
+            fetchHistory();
+          }
+        } catch (error) {}
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [selectedHistoryItem]);
+
+  // Polling deposit realtime untuk QRIS aktif
   useEffect(() => {
     let interval;
     if (qrisData) {
       interval = setInterval(async () => {
         try {
           const r = await api('deposit_status', { deposit_id: qrisData.id });
-          if (r.success && r.status === 'paid') {
-            setBalance(r.new_balance);
+          const newStatus = r.status || r.data?.status;
+          if (r.success && (newStatus === 'paid' || newStatus === 'success' || newStatus === 'completed')) {
+            setBalance(r.new_balance || r.data?.balance || balance);
             setQrisData(null);
             setDepositAmount('');
             showToast('success', 'Berhasil', 'Deposit berhasil masuk!');
+            api('balance').then(res => res.success && setBalance(res.data.balance));
           }
         } catch (error) {}
-      }, 4000);
+      }, 3000);
     }
     return () => clearInterval(interval);
   }, [qrisData]);
@@ -624,7 +648,6 @@ export default function Page() {
       const r = await api('operators', { country: country.name, provider_id: provider.provider_id });
       setLoadingOperators(false);
       if (r.success && Array.isArray(r.data) && r.data.length > 0) {
-        // API already includes 'any' as first item — deduplicate to be safe
         const seen = new Set();
         const deduped = r.data.filter(op => {
           const key = op.name?.toLowerCase();
@@ -714,8 +737,8 @@ export default function Page() {
       const r = await api('deposit_create', { amount: Number(depositAmount) });
       setCreatingQris(false);
       if (r.success && r.data) {
-        const totalAmt = r.data.total || r.data.amount || depositAmount;  // jumlah yang harus dibayar (dgn fee)
-        const creditAmt = r.data.diterima || r.data.amount || depositAmount; // jumlah yang masuk ke saldo
+        const totalAmt = r.data.total || r.data.amount || depositAmount;
+        const creditAmt = r.data.diterima || r.data.amount || depositAmount;
         setQrisData({ ...r.data, actual_amount: totalAmt, credit_amount: creditAmt });
       } else {
         showToast('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
@@ -730,7 +753,7 @@ export default function Page() {
     setBusy(true);
     const r = await api('deposit_status', { deposit_id: depId });
     setBusy(false);
-    if(r.success && r.status === 'paid') {
+    if(r.success && (r.status === 'paid' || r.data?.status === 'paid' || r.data?.status === 'success' || r.status === 'success')) {
       showToast('success', 'Berhasil', 'Pembayaran telah diterima.');
       fetchHistory();
       api('balance').then(res => res.success && setBalance(res.data.balance));
@@ -1408,10 +1431,10 @@ export default function Page() {
                         </div>
                         <div className={`history-status ${statusClass}`}>
                            <div className="history-amt">
-                             {item.itemType === 'deposit' ? '+' : '-'}{fmt(item.itemType === 'deposit' ? (item.base_amount || item.amount || item.price) : (item.amount || item.price))}
+                             {item.itemType === 'deposit' ? '+' : '-'}{fmt(item.itemType === 'deposit' ? (item.diterima || item.base_amount || item.amount || item.price) : (item.amount || item.price))}
                            </div>
-                           {item.itemType === 'deposit' && item.amount && item.base_amount && item.amount > item.base_amount && (
-                             <div className="history-admin-fee">Bayar: {(item.amount || 0).toLocaleString('id-ID')} IDR</div>
+                           {item.itemType === 'deposit' && (item.total || item.amount) > (item.diterima || item.base_amount) && (
+                             <div className="history-admin-fee">Bayar: {(item.total || item.amount || 0).toLocaleString('id-ID')} IDR</div>
                            )}
                            <span>{statusLabel}</span>
                         </div>
@@ -1425,7 +1448,6 @@ export default function Page() {
 
         {tab === 'profile' && (
           <div className="profile-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            {/* Avatar card */}
             <div style={{
               background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
               borderRadius: 20,
@@ -1564,10 +1586,11 @@ export default function Page() {
 
            <div className="receipt-card">
               <div className="receipt-total-label">Total Transaksi</div>
-              <div className="receipt-total-value">{(selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
-              {selectedHistoryItem.itemType === 'deposit' && selectedHistoryItem.base_amount && selectedHistoryItem.amount > selectedHistoryItem.base_amount && (
+              <div className="receipt-total-value">{(selectedHistoryItem.total || selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
+              
+              {selectedHistoryItem.itemType === 'deposit' && (selectedHistoryItem.diterima || selectedHistoryItem.base_amount) && (selectedHistoryItem.total || selectedHistoryItem.amount) > (selectedHistoryItem.diterima || selectedHistoryItem.base_amount) && (
                 <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--green)', fontWeight: 700, marginTop: -18, marginBottom: 20, background: 'var(--green-soft)', padding: '5px 14px', borderRadius: 'var(--r-full)', display: 'inline-block', marginLeft: 'auto', marginRight: 'auto', width: 'fit-content' }}>
-                  ✓ Saldo masuk: {(selectedHistoryItem.base_amount).toLocaleString('id-ID')} IDR
+                  ✓ Saldo masuk: {(selectedHistoryItem.diterima || selectedHistoryItem.base_amount || 0).toLocaleString('id-ID')} IDR
                 </div>
               )}
 
@@ -1601,7 +1624,7 @@ export default function Page() {
                 </div>
               )}
 
-              {selectedHistoryItem.itemType === 'deposit' && selectedHistoryItem.status === 'pending' && selectedHistoryItem.qr_image && (
+              {selectedHistoryItem.itemType === 'deposit' && (selectedHistoryItem.status === 'pending' || selectedHistoryItem.status === 'waiting') && selectedHistoryItem.qr_image && (
                 <div className="qris-blue-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.5px' }}>QRIS</div>
@@ -1614,13 +1637,12 @@ export default function Page() {
                   </div>
                   <div className="qris-blue-total">
                      <span>Total</span>
-                     <span>{(selectedHistoryItem.amount || 0).toLocaleString('id-ID')} IDR</span>
+                     <span>{(selectedHistoryItem.total || selectedHistoryItem.amount || 0).toLocaleString('id-ID')} IDR</span>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => { const depId = selectedHistoryItem.id; const depAmt = selectedHistoryItem.amount || 0; setSelectedHistoryItem(null); cancelHistoryDeposit(depId, depAmt); }} disabled={busy}>Batalkan</button>
+                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => { const depId = selectedHistoryItem.id; const depAmt = selectedHistoryItem.total || selectedHistoryItem.amount || 0; setSelectedHistoryItem(null); cancelHistoryDeposit(depId, depAmt); }} disabled={busy}>Batalkan</button>
                     <button className="btn" style={{ flex: 1, background: '#fff', color: '#0b63f6' }} onClick={() => window.open(selectedHistoryItem.qr_image, '_blank')}>Download</button>
                   </div>
-                  <button className="btn" style={{ width: '100%', background: 'transparent', border: '1px solid #fff', color: '#fff' }} onClick={() => { setSelectedHistoryItem(null); checkHistoryDeposit(selectedHistoryItem.id); }} disabled={busy}>Saya sudah membayar ✔</button>
                 </div>
               )}
 
@@ -1628,19 +1650,21 @@ export default function Page() {
 
               <div className="receipt-row">
                  <div className="receipt-row-label">Nominal</div>
-                 <div className="receipt-row-value">{(selectedHistoryItem.base_amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
+                 <div className="receipt-row-value">{(selectedHistoryItem.diterima || selectedHistoryItem.base_amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
               </div>
+              
               {selectedHistoryItem.itemType === 'deposit' && (
                 <div className="receipt-row">
                    <div className="receipt-row-label">Biaya Admin</div>
-                   <div className="receipt-row-value" style={{ color: ((selectedHistoryItem.amount || 0) - (selectedHistoryItem.base_amount || 0)) > 0 ? 'var(--amber)' : 'var(--text)' }}>
-                     {((selectedHistoryItem.amount || 0) - (selectedHistoryItem.base_amount || 0)).toLocaleString('id-ID')} IDR
+                   <div className="receipt-row-value" style={{ color: (selectedHistoryItem.fee !== undefined ? selectedHistoryItem.fee : ((selectedHistoryItem.total || selectedHistoryItem.amount || 0) - (selectedHistoryItem.diterima || selectedHistoryItem.base_amount || 0))) > 0 ? 'var(--amber)' : 'var(--text)' }}>
+                     {(selectedHistoryItem.fee !== undefined ? selectedHistoryItem.fee : ((selectedHistoryItem.total || selectedHistoryItem.amount || 0) - (selectedHistoryItem.diterima || selectedHistoryItem.base_amount || 0))).toLocaleString('id-ID')} IDR
                    </div>
                 </div>
               )}
+              
               <div className="receipt-row" style={{ color: 'var(--blue2)', fontWeight: 800 }}>
                  <div className="receipt-row-label" style={{ color: 'var(--blue2)' }}>Total Pembayaran</div>
-                 <div className="receipt-row-value">{(selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
+                 <div className="receipt-row-value">{(selectedHistoryItem.total || selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
               </div>
 
               <div className="receipt-footer-text">
