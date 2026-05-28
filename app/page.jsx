@@ -214,6 +214,7 @@ export default function Page() {
   const [profileConfirmPass, setProfileConfirmPass] = useState('');
   const [showCurPass, setShowCurPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
+  const [showProfileConfPass, setShowProfileConfPass] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPass, setSavingPass] = useState(false);
 
@@ -1725,8 +1726,8 @@ export default function Page() {
                 <div className="input-field">
                   <label>Konfirmasi Password</label>
                   <div className="input-icon-wrap">
-                    <input type={showNewPass ? 'text' : 'password'} value={profileConfirmPass} placeholder="Ulangi password baru" onChange={e => setProfileConfirmPass(e.target.value)} />
-                    <EyeToggle show={showNewPass} onToggle={() => setShowNewPass(v => !v)} />
+                    <input type={showProfileConfPass ? 'text' : 'password'} value={profileConfirmPass} placeholder="Ulangi password baru" onChange={e => setProfileConfirmPass(e.target.value)} />
+                    <EyeToggle show={showProfileConfPass} onToggle={() => setShowProfileConfPass(v => !v)} />
                   </div>
                 </div>
                 {profileConfirmPass && profileNewPass !== profileConfirmPass && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
@@ -1998,6 +1999,54 @@ export default function Page() {
         </div>
       </div>
 
+      {/* ===== GENERIC CONFIRM MODAL ===== */}
+      {modal.show && (
+        <div className="modal-overlay open" onClick={closeModal}>
+          <div className="modal-content popIn" onClick={e => e.stopPropagation()} style={{ padding: '28px 24px' }}>
+            <div className={`modal-svg-wrap ${modal.type}`}>
+              {modal.type === 'warning' && <IconWarning />}
+              {modal.type === 'error' && <IconCross />}
+              {modal.type === 'success' && <IconCheck />}
+              {modal.type === 'info' && <span style={{ fontSize: '1.4rem' }}>ℹ️</span>}
+            </div>
+            <h3 style={{ textAlign: 'center', marginBottom: 8 }}>{modal.title}</h3>
+            <p style={{ textAlign: 'center' }}>{modal.msg}</p>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={closeModal}>Batal</button>
+              {modal.onConfirm && (
+                <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => { modal.onConfirm(); closeModal(); }}>Lanjutkan</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== OPERATOR SELECTION MODAL ===== */}
       <div className={`modal-overlay ${showOperatorModal ? 'open' : ''}`} onClick={() => setShowOperatorModal(false)}>
         <div className={`modal-content ${showOperatorModal ? 'popIn' : ''}`} onClick={e => e.stopPropagation()} style={{ padding: '24px' }}>
-          <h3 style={{ marginBottom: '16px', fontSize: '1.15rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Pilih Operat
+          <h3 style={{ marginBottom: '16px', fontSize: '1.15rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Pilih Operator</h3>
+          {loadingOperators ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
+              <LoadingSpinner />
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>Memuat daftar operator...</span>
+            </div>
+          ) : (
+            <div className="operator-grid">
+              {operators.map(op => (
+                <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op)}>
+                  <div className="operator-icon-placeholder">
+                    <span style={{ fontSize: '1.4rem' }}>📡</span>
+                  </div>
+                  <span>{op.name === 'any' ? 'Any / Semua' : op.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <button className="btn btn-secondary" style={{ marginTop: 16, width: '100%', height: 44, borderRadius: 'var(--r-full)' }} onClick={() => setShowOperatorModal(false)}>
+            Batal
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
