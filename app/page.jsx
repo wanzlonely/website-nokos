@@ -92,31 +92,33 @@ function EyeToggle({ show, onToggle }) {
   );
 }
 
-function LoadingSpinner() {
-  return <div className="loading-spinner" />;
+function LoadingSpinner({ style }) {
+  return <div className="loading-spinner" style={style} />;
 }
 
+// Ikon SVG Duotone Premium
 const SvgProduct = () => (
-  <svg viewBox="0 0 24 24" fill="none" width="26" height="26">
-    <rect x="5" y="2" width="14" height="20" rx="3" fill="currentColor" fillOpacity="0.2"/>
-    <path stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+  <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
+    <rect x="5" y="2" width="14" height="20" rx="3" fill="currentColor" fillOpacity="0.15"/>
+    <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
   </svg>
 );
 const SvgPPOB = () => (
   <svg viewBox="0 0 24 24" fill="none" width="26" height="26">
-    <path d="M13 10V3L4 14h7v7l9-11h-7z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="2" y="6" width="20" height="12" rx="4" fill="currentColor" fillOpacity="0.15"/>
+    <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 12h4m-2-2v4m8-2h.01M16 10h.01"/>
   </svg>
 );
 const SvgTopUp = () => (
   <svg viewBox="0 0 24 24" fill="none" width="26" height="26">
-    <rect x="3" y="6" width="18" height="12" rx="2" fill="currentColor" fillOpacity="0.2"/>
-    <path stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 14h3M3 8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+    <rect x="3" y="6" width="18" height="12" rx="2" fill="currentColor" fillOpacity="0.15"/>
+    <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 14h3M3 8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
   </svg>
 );
 const SvgProfile = () => (
   <svg viewBox="0 0 24 24" fill="none" width="26" height="26">
-    <circle cx="12" cy="8" r="4" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="2.2"/>
-    <path stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
+    <circle cx="12" cy="8" r="4" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="2"/>
+    <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
   </svg>
 );
 
@@ -159,8 +161,10 @@ export default function Page() {
   const [countries, setCountries] = useState([]);
   const [loadingCountries, setLoadingCountries] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState(null);
-  const [ordering, setOrdering] = useState(false);
+  
+  // State untuk expand List Server per Negara
+  const [expandedCountry, setExpandedCountry] = useState(null);
+  const [orderingProv, setOrderingProv] = useState(null);
 
   const [order, setOrder] = useState(null);
   const [checkingSms, setCheckingSms] = useState(false);
@@ -293,9 +297,30 @@ export default function Page() {
     return () => clearInterval(cd);
   }, [depositCooldown]);
 
+  // Realtime Polling Deposit Status
+  useEffect(() => {
+    let interval;
+    if (qrisData) {
+      interval = setInterval(async () => {
+        try {
+          const r = await api('deposit_status', { deposit_id: qrisData.id });
+          if (r.success && r.status === 'paid') {
+            setBalance(r.new_balance);
+            setQrisData(null);
+            setDepositAmount('');
+            showModal('success', 'Pembayaran Diterima', 'Deposit berhasil masuk ke saldo kamu secara otomatis!');
+          }
+        } catch (error) {
+           console.error(error);
+        }
+      }, 4000); // Cek setiap 4 detik
+    }
+    return () => clearInterval(interval);
+  }, [qrisData]);
+
   useEffect(() => {
     if (!showSheet) { 
-      setSelectedCountry(null); 
+      setExpandedCountry(null); 
       setCountries([]); 
       setCountryQuery(''); 
     }
@@ -330,112 +355,140 @@ export default function Page() {
       return;
     }
     setBusy(true);
-    const check = await api('check_email', { email });
-    if (!check.exists) {
+    try {
+      const check = await api('check_email', { email });
+      if (!check.exists) {
+        setBusy(false);
+        showModal('warning', 'Belum Terdaftar', 'Email ini belum terdaftar. Silakan buat akun baru terlebih dahulu.');
+        return;
+      }
+      sendOtp(email, 'reset');
+    } catch (e) {
       setBusy(false);
-      showModal('warning', 'Belum Terdaftar', 'Email ini belum terdaftar. Silakan buat akun baru terlebih dahulu.');
-      return;
+      showModal('error', 'Error', 'Gagal memproses permintaan.');
     }
-    sendOtp(email, 'reset');
   };
 
   const sendOtp = async (targetEmail, mode = 'register') => {
     if (!targetEmail) return;
     setBusy(true);
-    const r = await authApi('request-otp', { email: targetEmail });
-    setBusy(false);
-    if (r.success) {
-      setOtpMode(mode);
-      setOtpCode('');
-      setStep(mode === 'reset' ? 'forgot_otp' : 'register_otp');
-      startCountdown();
-    } else {
-      showModal('error', 'Gagal', r.msg || 'Gagal mengirim OTP ke email kamu.');
+    try {
+      const r = await authApi('request-otp', { email: targetEmail });
+      setBusy(false);
+      if (r.success) {
+        setOtpMode(mode);
+        setOtpCode('');
+        setStep(mode === 'reset' ? 'forgot_otp' : 'register_otp');
+        startCountdown();
+      } else {
+        showModal('error', 'Gagal', r.msg || 'Gagal mengirim OTP ke email kamu.');
+      }
+    } catch (e) {
+      setBusy(false);
+      showModal('error', 'Error', 'Gagal terhubung ke server.');
     }
   };
 
   const verifyOtp = async () => {
     if (otpCode.length !== 6) return;
     setBusy(true);
-    const r = await authApi('verify-otp', { email, code: otpCode, mode: otpMode });
-    setBusy(false);
-    if (r.success) {
-      if (otpMode === 'reset') {
-        setResetToken(r.resetToken);
-        setNewPass(''); setConfirmPass('');
-        setStep('reset_pw');
-      } else {
-        if (r.needsSetup) {
-          setStep('register_setup');
+    try {
+      const r = await authApi('verify-otp', { email, code: otpCode, mode: otpMode });
+      setBusy(false);
+      if (r.success) {
+        if (otpMode === 'reset') {
+          setResetToken(r.resetToken);
+          setNewPass(''); setConfirmPass('');
+          setStep('reset_pw');
         } else {
-          setUser(r.user);
-          setBalance(r.user.balance);
-          setUsername(r.user.username);
-          setHasPassword(true);
-          setStep('app');
+          if (r.needsSetup) {
+            setStep('register_setup');
+          } else {
+            setUser(r.user);
+            setBalance(r.user.balance);
+            setUsername(r.user.username);
+            setHasPassword(true);
+            setStep('app');
+          }
         }
+      } else {
+        showModal('error', 'Verifikasi Gagal', r.msg || 'Kode OTP salah atau sudah expired.');
       }
-    } else {
-      showModal('error', 'Verifikasi Gagal', r.msg || 'Kode OTP salah atau sudah expired.');
+    } catch(e) {
+      setBusy(false);
+      showModal('error', 'Error', 'Kesalahan koneksi verifikasi OTP.');
     }
   };
 
   const completeSetup = async () => {
     if (newPass.length < 6 || newPass !== confirmPass || !setupUser) return;
     setBusy(true);
-    const r = await authApi('set-password', { newPassword: newPass, setupMode: true, username: setupUser });
-    setBusy(false);
-    if (r.success) {
-      api('balance').then(res => {
-        if (res.success) {
-          setUser({ email: res.data.email });
-          setBalance(res.data.balance);
-          setUsername(res.data.username);
-          setHasPassword(true);
-          setStep('app');
-        }
-      });
-    } else {
-      showModal('error', 'Gagal', r.msg || 'Gagal menyimpan pengaturan profil.');
+    try {
+      const r = await authApi('set-password', { newPassword: newPass, setupMode: true, username: setupUser });
+      setBusy(false);
+      if (r.success) {
+        api('balance').then(res => {
+          if (res.success) {
+            setUser({ email: res.data.email });
+            setBalance(res.data.balance);
+            setUsername(res.data.username);
+            setHasPassword(true);
+            setStep('app');
+          }
+        });
+      } else {
+        showModal('error', 'Gagal', r.msg || 'Gagal menyimpan pengaturan profil.');
+      }
+    } catch(e) {
+      setBusy(false);
+      showModal('error', 'Error', 'Terjadi kesalahan sistem.');
     }
   };
 
   const loginWithPassword = async () => {
     if (!email || !pwInput) return;
     setBusy(true);
-    const r = await authApi('login-password', { email, password: pwInput });
-    setBusy(false);
-    if (r.success) {
-      setUser(r.user);
-      setBalance(r.user.balance);
-      setUsername(r.user.username);
-      setHasPassword(true);
-      setStep('app');
-    } else {
-      if (r.msg.toLowerCase().includes('belum terdaftar')) {
-        showModal('warning', 'Belum Terdaftar', r.msg);
-      } else if (r.msg.toLowerCase().includes('salah')) {
-        showModal('error', 'Login Gagal', r.msg);
+    try {
+      const r = await authApi('login-password', { email, password: pwInput });
+      setBusy(false);
+      if (r.success) {
+        setUser(r.user);
+        setBalance(r.user.balance);
+        setUsername(r.user.username);
+        setHasPassword(true);
+        setStep('app');
       } else {
-        showModal('error', 'Login Gagal', r.msg);
+        if (r.msg.toLowerCase().includes('belum terdaftar')) {
+          showModal('warning', 'Belum Terdaftar', r.msg);
+        } else {
+          showModal('error', 'Login Gagal', r.msg);
+        }
       }
+    } catch (e) {
+      setBusy(false);
+      showModal('error', 'Error Sistem', 'Gagal terhubung ke server saat login.');
     }
   };
 
   const resetPassword = async () => {
     if (newPass.length < 6 || newPass !== confirmPass) return;
     setBusy(true);
-    const r = await authApi('reset-password', { resetToken, newPassword: newPass });
-    setBusy(false);
-    if (r.success) {
-      setUser(r.user);
-      setBalance(r.user.balance);
-      setUsername(r.user.username);
-      setHasPassword(true);
-      setStep('app');
-      showModal('success', 'Berhasil', 'Password baru berhasil disimpan.');
-    } else {
-      showModal('error', 'Gagal', r.msg || 'Proses reset password gagal, coba lagi nanti.');
+    try {
+      const r = await authApi('reset-password', { resetToken, newPassword: newPass });
+      setBusy(false);
+      if (r.success) {
+        setUser(r.user);
+        setBalance(r.user.balance);
+        setUsername(r.user.username);
+        setHasPassword(true);
+        setStep('app');
+        showModal('success', 'Berhasil', 'Password baru berhasil disimpan.');
+      } else {
+        showModal('error', 'Gagal', r.msg || 'Proses reset password gagal, coba lagi nanti.');
+      }
+    } catch (e) {
+       setBusy(false);
+       showModal('error', 'Error', 'Gagal melakukan reset password.');
     }
   };
 
@@ -467,28 +520,31 @@ export default function Page() {
     }
   };
 
-  const buyNumber = async () => {
-    if (!selectedSvc || !selectedCountry) return;
-    const prov = selectedCountry.available[0];
-    if (!prov) return;
-    setOrdering(true);
-    const r = await api('order_create', {
-      number_id: selectedCountry.number_id,
-      provider_id: prov.provider_id,
-      service_id: selectedSvc.service_code,
-    });
-    setOrdering(false);
-    if (r.success) {
-      setOrder({ ...r.data, service_name: selectedSvc.service_name, service_img: selectedSvc.service_img });
-      setShowSheet(false);
-      api('balance').then(res => res.success && setBalance(res.data.balance));
-    } else {
-      if (r.msg && r.msg.toLowerCase().includes('tidak cukup')) {
+  const buyNumber = async (country, provider) => {
+    if (!selectedSvc || !country || !provider) return;
+    setOrderingProv(provider.provider_id);
+    try {
+      const r = await api('order_create', {
+        number_id: country.number_id,
+        provider_id: provider.provider_id,
+        service_id: selectedSvc.service_code,
+      });
+      setOrderingProv(null);
+      if (r.success) {
+        setOrder({ ...r.data, service_name: selectedSvc.service_name, service_img: selectedSvc.service_img });
         setShowSheet(false);
-        showModal('warning', 'Saldo Tidak Cukup!', 'Saldo kamu kurang untuk membeli nomor ini. Yuk top up dulu agar bisa bertransaksi dengan lancar.', () => setTab('deposit'));
+        api('balance').then(res => res.success && setBalance(res.data.balance));
       } else {
-        showModal('error', 'Transaksi Gagal', r.msg || 'Gagal membeli nomor dari server.');
+        if (r.msg && r.msg.toLowerCase().includes('tidak cukup')) {
+          setShowSheet(false);
+          showModal('warning', 'Saldo Tidak Cukup!', 'Saldo kamu kurang untuk membeli nomor ini. Yuk top up dulu agar bisa bertransaksi dengan lancar.', () => setTab('deposit'));
+        } else {
+          showModal('error', 'Transaksi Gagal', r.msg || 'Gagal membeli nomor dari server.');
+        }
       }
+    } catch(e) {
+      setOrderingProv(null);
+      showModal('error', 'Error', 'Koneksi ke server gagal.');
     }
   };
 
@@ -505,29 +561,39 @@ export default function Page() {
   const createQris = async () => {
     if (!depositAmount || Number(depositAmount) <= 0) return;
     setCreatingQris(true);
-    const r = await api('deposit_create', { amount: Number(depositAmount) });
-    setCreatingQris(false);
-    if (r.success && r.data) {
-      const actualAmt = r.data.amount || r.data.total || depositAmount;
-      setQrisData({ ...r.data, actual_amount: actualAmt });
-      setDepositCooldown(120);
-    } else {
-      showModal('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
+    try {
+      const r = await api('deposit_create', { amount: Number(depositAmount) });
+      setCreatingQris(false);
+      if (r.success && r.data) {
+        const actualAmt = r.data.amount || r.data.total || depositAmount;
+        setQrisData({ ...r.data, actual_amount: actualAmt });
+        setDepositCooldown(120);
+      } else {
+        showModal('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
+      }
+    } catch (e) {
+      setCreatingQris(false);
+      showModal('error', 'Error', 'Terjadi kesalahan jaringan.');
     }
   };
 
   const checkDeposit = async () => {
     if (!qrisData) return;
     setCheckingDeposit(true);
-    const r = await api('deposit_status', { deposit_id: qrisData.id });
-    setCheckingDeposit(false);
-    if (r.success && r.status === 'paid') {
-      setBalance(r.new_balance);
-      setQrisData(null);
-      setDepositAmount('');
-      showModal('success', 'Pembayaran Diterima', 'Deposit berhasil masuk ke saldo kamu!');
-    } else {
-      showModal('warning', 'Belum Terdeteksi', 'Pembayaran belum masuk. Tunggu beberapa saat dan cek kembali.');
+    try {
+      const r = await api('deposit_status', { deposit_id: qrisData.id });
+      setCheckingDeposit(false);
+      if (r.success && r.status === 'paid') {
+        setBalance(r.new_balance);
+        setQrisData(null);
+        setDepositAmount('');
+        showModal('success', 'Pembayaran Diterima', 'Deposit berhasil masuk ke saldo kamu!');
+      } else {
+        showModal('warning', 'Belum Terdeteksi', 'Pembayaran belum masuk. Tunggu beberapa saat dan cek kembali.');
+      }
+    } catch (e) {
+       setCheckingDeposit(false);
+       showModal('error', 'Error', 'Gagal mengecek status.');
     }
   };
 
@@ -629,7 +695,7 @@ export default function Page() {
             </div>
           </div>
           <button className="btn btn-primary" onClick={loginWithPassword} disabled={!email || !pwInput || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
-            {busy ? <><LoadingSpinner /> Memproses...</> : '🔑 Masuk Sekarang'}
+            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Memproses...</> : '🔑 Masuk Sekarang'}
           </button>
           <button className="btn-ghost" onClick={() => setStep('forgot')} style={{ color: 'var(--blue2)', marginBottom: 8 }}>
             Lupa Password?
@@ -656,7 +722,7 @@ export default function Page() {
               onKeyDown={e => e.key === 'Enter' && !busy && email && sendOtp(email, 'register')} />
           </div>
           <button className="btn btn-primary" onClick={() => sendOtp(email, 'register')} disabled={!email || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
-            {busy ? <><LoadingSpinner /> Mengirim...</> : '✉️ Kirim Kode OTP'}
+            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Mengirim...</> : '✉️ Kirim Kode OTP'}
           </button>
           <button className="btn-ghost" onClick={() => { setStep('welcome'); setEmail(''); }}>
             ← Batal
@@ -688,7 +754,7 @@ export default function Page() {
               disabled={countdown === 0} />
           </div>
           <button className="btn btn-primary" onClick={verifyOtp} disabled={otpCode.length !== 6 || busy || countdown === 0} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner /> Verifikasi...</> : '✅ Verifikasi OTP'}
+            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Verifikasi...</> : '✅ Verifikasi OTP'}
           </button>
           <button className="btn btn-secondary" onClick={() => sendOtp(email, isReset ? 'reset' : 'register')} disabled={busy || countdown > 0} style={{ borderRadius: 'var(--r-full)' }}>
             {countdown > 0 ? `Kirim Ulang (${formatTime(countdown)})` : '🔄 Kirim Ulang OTP'}
@@ -731,7 +797,7 @@ export default function Page() {
           {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
           {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
           <button className="btn btn-primary" onClick={completeSetup} disabled={!isValid || busy} style={{ height: 54, borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner /> Menyimpan...</> : '🚀 Mulai Gunakan Aplikasi'}
+            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Menyimpan...</> : '🚀 Mulai Gunakan Aplikasi'}
           </button>
         </div>
       </div>
@@ -750,7 +816,7 @@ export default function Page() {
             <input type="email" value={email} placeholder="nama@email.com" onChange={e => setEmail(e.target.value)} />
           </div>
           <button className="btn btn-primary" onClick={handleForgotCheck} disabled={!email || busy} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner /> Memeriksa...</> : '📩 Lanjutkan'}
+            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Memeriksa...</> : '📩 Lanjutkan'}
           </button>
           <button className="btn-ghost" onClick={() => setStep('login')}>
             ← Batal
@@ -786,7 +852,7 @@ export default function Page() {
           {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
           {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
           <button className="btn btn-primary" onClick={resetPassword} disabled={!isValid || busy} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner /> Menyimpan...</> : '💾 Simpan Password'}
+            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Menyimpan...</> : '💾 Simpan Password'}
           </button>
         </div>
       </div>
@@ -888,7 +954,7 @@ export default function Page() {
                     </div>
                     <p>Menunggu SMS masuk...<br />Gunakan nomor di atas untuk verifikasi</p>
                     <button className="btn btn-primary" onClick={checkSms} disabled={checkingSms} style={{ width: '100%', borderRadius: 'var(--r-full)' }}>
-                      {checkingSms ? <><LoadingSpinner /> Mengecek...</> : '🔄 Cek SMS'}
+                      {checkingSms ? <><LoadingSpinner style={{width:16, height:16}} /> Mengecek...</> : '🔄 Cek SMS'}
                     </button>
                   </div>
                 ) : (
@@ -965,14 +1031,14 @@ export default function Page() {
                   <input type="number" value={depositAmount} placeholder="Contoh: 10000" onChange={e => setDepositAmount(e.target.value)} />
                 </div>
                 <div className="deposit-amounts">
-                  {[10000, 20000, 50000, 100000, 200000, 500000].map(amt => (
+                  {[2000, 10000, 20000, 50000, 100000, 200000].map(amt => (
                     <button key={amt} className={`amount-chip ${depositAmount == amt ? 'active' : ''}`} onClick={() => setDepositAmount(String(amt))}>
                       {fmt(amt).replace('Rp ', 'Rp')}
                     </button>
                   ))}
                 </div>
                 <button className="btn btn-primary" onClick={createQris} disabled={!depositAmount || Number(depositAmount) <= 0 || creatingQris || depositCooldown > 0} style={{ marginTop: 12, borderRadius: 'var(--r-full)' }}>
-                  {creatingQris ? <><LoadingSpinner /> Membuat QRIS...</> : depositCooldown > 0 ? `Tunggu ${formatTime(depositCooldown)}` : '📲 Buat QRIS Pembayaran'}
+                  {creatingQris ? <><LoadingSpinner style={{width:16, height:16}} /> Membuat QRIS...</> : depositCooldown > 0 ? `Tunggu ${formatTime(depositCooldown)}` : '📲 Buat QRIS Pembayaran'}
                 </button>
               </div>
             ) : (
@@ -985,10 +1051,10 @@ export default function Page() {
                 </div>
                 <div className="qris-amount">{fmt(qrisData.actual_amount)}</div>
                 <button className="btn btn-success" onClick={checkDeposit} disabled={checkingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
-                  {checkingDeposit ? <><LoadingSpinner /> Mengecek...</> : '✅ Cek Status Pembayaran'}
+                  {checkingDeposit ? <><LoadingSpinner style={{width:16, height:16}} /> Mengecek...</> : '✅ Cek Status Pembayaran'}
                 </button>
                 <button className="btn btn-danger" onClick={cancelDeposit} disabled={cancelingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
-                  {cancelingDeposit ? <><LoadingSpinner /> Membatalkan...</> : '✖ Batalkan Transaksi'}
+                  {cancelingDeposit ? <><LoadingSpinner style={{width:16, height:16}} /> Membatalkan...</> : '✖ Batalkan Transaksi'}
                 </button>
               </div>
             )}
@@ -1021,7 +1087,7 @@ export default function Page() {
                   <input type="email" value={user?.email || ''} disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} />
                 </div>
                 <button className="btn btn-primary mt-16" onClick={saveProfile} disabled={savingProfile} style={{ borderRadius: 'var(--r-full)' }}>
-                  {savingProfile ? <><LoadingSpinner /> Menyimpan...</> : '💾 Simpan Profil'}
+                  {savingProfile ? <><LoadingSpinner style={{width:16, height:16}} /> Menyimpan...</> : '💾 Simpan Profil'}
                 </button>
               </div>
             </div>
@@ -1057,7 +1123,7 @@ export default function Page() {
                 </div>
                 {profileConfirmPass && profileNewPass !== profileConfirmPass && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
                 <button className="btn btn-primary" onClick={savePassword} disabled={savingPass || profileNewPass.length < 6 || profileNewPass !== profileConfirmPass || (hasPassword && !curPass)} style={{ borderRadius: 'var(--r-full)' }}>
-                  {savingPass ? <><LoadingSpinner /> Menyimpan...</> : '🔐 Simpan Password'}
+                  {savingPass ? <><LoadingSpinner style={{width:16, height:16}} /> Menyimpan...</> : '🔐 Simpan Password'}
                 </button>
               </div>
             </div>
@@ -1101,7 +1167,7 @@ export default function Page() {
             </div>
             <div style={{ flex: 1 }}>
               <div className="sheet-svc-name">{selectedSvc?.service_name}</div>
-              <div className="sheet-title">Pilih Negara</div>
+              <div className="sheet-title">Pilih Server Negara</div>
             </div>
           </div>
           <div className="sheet-search">
@@ -1112,7 +1178,7 @@ export default function Page() {
           {loadingCountries ? (
             <div className="sheet-loading">
               <LoadingSpinner />
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>Memuat negara...</p>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>Memuat server...</p>
             </div>
           ) : filteredCountries.length === 0 ? (
             <div className="empty-state" style={{ padding: '32px 0' }}>
@@ -1121,31 +1187,42 @@ export default function Page() {
             </div>
           ) : (
             filteredCountries.map(c => {
-              const cheapest = c.available[0];
               const totalStock = c.available.length;
-              const isSelected = selectedCountry?.number_id === c.number_id;
+              const isExpanded = expandedCountry === c.number_id;
+              
               return (
-                <div key={c.number_id || c.name} className={`country-item ${isSelected ? 'selected' : ''}`} onClick={() => setSelectedCountry(c)}>
-                  <span className="country-flag">{getFlag(c.name)}</span>
-                  <span className="country-name">{c.name}</span>
-                  <div className="country-right">
-                    <div className="country-price">{fmt(cheapest?.price)}</div>
-                    <div className={`country-stock ${totalStock > 3 ? 'text-green' : totalStock > 0 ? 'text-amber' : 'text-red'}`}>
-                      {totalStock > 0 ? `${totalStock} tersedia` : 'Habis'}
+                <div key={c.number_id || c.name} className="country-wrapper">
+                  <div className={`country-item ${isExpanded ? 'selected' : ''}`} onClick={() => setExpandedCountry(isExpanded ? null : c.number_id)}>
+                    <span className="country-flag">{getFlag(c.name)}</span>
+                    <span className="country-name">{c.name}</span>
+                    <div className="country-right">
+                      <div className="country-price">Mulai {fmt(c.available[0]?.price)}</div>
+                      <div className={`country-stock ${totalStock > 3 ? 'text-green' : totalStock > 0 ? 'text-amber' : 'text-red'}`}>
+                        {totalStock > 0 ? `${totalStock} server` : 'Habis'}
+                      </div>
                     </div>
                   </div>
+                  
+                  {isExpanded && (
+                    <div className="provider-list">
+                      {c.available.map(prov => (
+                        <div key={prov.provider_id} className="provider-item">
+                          <div className="provider-info">
+                            <span className="provider-id">ID: {prov.provider_id}</span>
+                            <span className="provider-price">{fmt(prov.price)}</span>
+                          </div>
+                          <button className="btn-order" disabled={orderingProv === prov.provider_id} onClick={() => buyNumber(c, prov)}>
+                            {orderingProv === prov.provider_id ? <LoadingSpinner style={{ width: 14, height: 14, borderWidth: 2 }} /> : 'Order'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })
           )}
         </div>
-        {selectedCountry && (
-          <div className="sheet-footer">
-            <button className="btn btn-primary" onClick={buyNumber} disabled={ordering} style={{ borderRadius: 'var(--r-full)' }}>
-              {ordering ? <><LoadingSpinner /> Memproses...</> : `🛒 Beli Nomor ${getFlag(selectedCountry.name)} ${fmt(selectedCountry.available[0]?.price)}`}
-            </button>
-          </div>
-        )}
       </div>
 
       <div className={`modal-overlay ${modal.show ? 'open' : ''}`}>
