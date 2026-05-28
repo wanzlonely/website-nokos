@@ -576,10 +576,41 @@ body {
 .receipt-card { background: var(--surface); margin: -28px 18px 18px; border-radius: var(--r-2xl); padding: 22px 18px; box-shadow: var(--card-shadow-lg); position: relative; z-index: 5; border: 1px solid var(--border); animation: receiptCardUp 0.4s var(--ease-out) 0.15s both; }
 @keyframes receiptCardUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 .receipt-total-label { font-size: 0.8rem; color: var(--text-3); text-align: center; margin-bottom: 5px; font-weight: 600; }
-.receipt-total-value { font-family: var(--font-mono); font-size: 2rem; font-weight: 900; color: var(--blue2); text-align: center; margin-bottom: 22px; letter-spacing: -1px; }
+.receipt-total-value { font-family: var(--font-mono); font-size: 2rem; font-weight: 900; color: var(--blue2); text-align: center; margin-bottom: 12px; letter-spacing: -1px; }
+
+/* Saldo masuk badge - redesigned */
+.receipt-saldo-badge {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  margin: 0 auto 20px; padding: 6px 16px;
+  background: var(--green-soft); color: var(--green);
+  border: 1px solid rgba(0,232,122,0.25); border-radius: var(--r-full);
+  font-size: 0.76rem; font-weight: 700; width: fit-content;
+  animation: fadeIn 0.3s ease both;
+}
+.receipt-saldo-badge strong { font-weight: 900; }
+
+/* ID row redesign - no wrapping overflow */
+.receipt-row-id { flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.receipt-id-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
+.receipt-id-text {
+  font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700;
+  color: var(--text); background: var(--glass2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 5px 10px; flex: 1; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+  letter-spacing: 0.02em;
+}
+.receipt-copy-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px;
+  background: var(--blue-soft); border: 1px solid var(--border-blue);
+  color: var(--blue2); border-radius: var(--r-sm); font-size: 0.72rem;
+  font-weight: 800; cursor: pointer; flex-shrink: 0; transition: all 0.18s;
+  font-family: var(--font-sans);
+}
+.receipt-copy-btn:hover { background: var(--blue2); color: #fff; border-color: var(--blue2); }
+
 .receipt-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; font-size: 0.82rem; }
 .receipt-row-label { color: var(--text-3); font-weight: 600; flex: 1; }
-.receipt-row-value { color: var(--text); font-weight: 800; text-align: right; flex: 1.5; word-break: break-all; }
+.receipt-row-value { color: var(--text); font-weight: 800; text-align: right; flex: 1.5; word-break: break-word; }
 .receipt-copy { color: var(--text-3); cursor: pointer; display: inline-flex; align-items: center; margin-left: 6px; transition: color 0.2s; }
 .receipt-copy:hover { color: var(--text); }
 .receipt-box { border: 1px solid var(--border); border-radius: var(--r-md); padding: 11px 13px; display: flex; align-items: center; gap: 11px; margin-bottom: 22px; background: var(--glass2); }
@@ -593,13 +624,55 @@ body {
 .receipt-actions { display: flex; gap: 10px; margin-top: 22px; }
 .receipt-actions .btn { flex: 1; border-radius: var(--r-full); height: 48px; }
 
-/* ===== QRIS BLUE CARD (history pending) ===== */
-.qris-blue-card { background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: #fff; border-radius: var(--r-xl); padding: 22px; text-align: center; margin-bottom: 22px; box-shadow: 0 10px 30px rgba(29,78,216,0.3); }
-.qris-blue-title { font-size: 1.1rem; font-weight: 900; margin-bottom: 5px; font-family: var(--font-display); }
-.qris-blue-nmid { font-size: 0.72rem; opacity: 0.85; margin-bottom: 22px; font-weight: 600; }
-.qris-blue-qr-wrap { background: #fff; padding: 14px; border-radius: 12px; display: inline-block; width: 100%; max-width: 240px; margin-bottom: 22px; }
+/* ===== QRIS BLUE CARD (history pending) — redesigned ===== */
+.qris-blue-card { background: linear-gradient(145deg, #1a45c2, #2f73f5); color: #fff; border-radius: var(--r-xl); padding: 0; text-align: center; margin-bottom: 22px; box-shadow: 0 12px 40px rgba(29,78,216,0.35); overflow: hidden; }
+
+/* Expiry countdown bar */
+.qris-expiry-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 18px; background: rgba(0,0,0,0.18);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.76rem; font-weight: 700;
+}
+.qris-expiry-bar.qris-expiry-expired {
+  background: rgba(239,68,68,0.25); display: flex; align-items: center; justify-content: center;
+  gap: 6px; color: #fca5a5; font-size: 0.78rem;
+}
+.qris-expiry-info { display: flex; align-items: center; gap: 5px; opacity: 0.88; }
+.qris-expiry-digits { display: flex; align-items: center; gap: 3px; }
+.qris-digit-box {
+  background: rgba(0,0,0,0.28); border-radius: 5px; padding: 3px 7px;
+  font-family: var(--font-mono); font-size: 1rem; font-weight: 900;
+  min-width: 26px; text-align: center;
+}
+.qris-digit-sep { font-size: 1rem; font-weight: 900; opacity: 0.7; margin: 0 1px; }
+
+/* Card body */
+.qris-blue-header-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px 4px; }
+.qris-blue-title { font-size: 1.1rem; font-weight: 900; margin-bottom: 3px; font-family: var(--font-display); }
+.qris-blue-nmid { font-size: 0.68rem; opacity: 0.78; margin-bottom: 16px; font-weight: 600; letter-spacing: 0.02em; }
+.qris-blue-qr-wrap { background: #fff; padding: 12px; border-radius: 12px; display: inline-block; width: calc(100% - 32px); max-width: 230px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
 .qris-blue-qr-wrap img { width: 100%; display: block; border-radius: 4px; }
-.qris-blue-total { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.2); border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 18px; font-weight: 800; font-size: 1.05rem; }
+.qris-blue-total { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: rgba(0,0,0,0.15); border-top: 1px solid rgba(255,255,255,0.15); margin-bottom: 0; font-weight: 800; font-size: 0.95rem; }
+
+/* QRIS action buttons */
+.qris-btn-cancel {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--r-full); height: 44px; font-size: 0.82rem; font-weight: 700;
+  transition: all 0.2s; margin: 0;
+}
+.qris-btn-cancel:hover { background: rgba(239,68,68,0.3); border-color: rgba(239,68,68,0.5); color: #fff; }
+.qris-btn-download {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: #fff; color: #1d4ed8; border: none;
+  border-radius: var(--r-full); height: 44px; font-size: 0.82rem; font-weight: 800;
+  transition: all 0.2s; box-shadow: 0 2px 12px rgba(0,0,0,0.15); margin: 0;
+}
+.qris-btn-download:hover { background: #e0eaff; transform: translateY(-1px); }
+/* wrapper for buttons inside blue card */
+.qris-blue-card > div:has(.qris-btn-cancel) { padding: 12px 18px; }
+.qris-scan-hint { font-size: 0.68rem; opacity: 0.65; padding-bottom: 14px; font-weight: 600; letter-spacing: 0.01em; }
 
 /* ===== BOTTOM NAV ===== */
 .bottom-nav {
