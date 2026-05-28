@@ -1201,3 +1201,84 @@ body {
 .success-confetti-wrap {
   z-index: 10001 !important;
 }
+
+/* ===== HEADER LOGO CIRCULAR + WALZ SHOP TEXT ===== */
+.header-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.header-logo-circle {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+.header-logo-img-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  position: relative;
+  z-index: 2;
+  border: 2px solid rgba(79,140,255,0.5);
+  box-shadow: 0 0 12px rgba(79,140,255,0.35);
+  transition: transform 0.35s var(--ease-out);
+}
+.header-logo-circle:hover .header-logo-img-circle {
+  transform: scale(1.08);
+}
+.header-logo-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: linear-gradient(135deg, var(--blue), var(--cyan)) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
+  animation: logoRingSpin 4s linear infinite;
+  z-index: 1;
+}
+@keyframes logoRingSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.header-brand-text {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1;
+  white-space: nowrap;
+}
+.header-brand-text span {
+  background: linear-gradient(135deg, var(--blue2), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== NOTIFICATION DOT ===== */
+.notif-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 6px rgba(239,68,68,0.7);
+  animation: notifPulse 1.5s ease-in-out infinite;
+  z-index: 10;
+}
+@keyframes notifPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 6px rgba(239,68,68,0.7); }
+  50% { transform: scale(1.25); box-shadow: 0 0 12px rgba(239,68,68,0.9); }
+}
