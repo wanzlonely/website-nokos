@@ -157,19 +157,23 @@ body {
 
 .header-logo-circle {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 80px;
+  height: 80px;
   flex-shrink: 0;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .header-logo-img-circle {
-  width: 48px;
-  height: 48px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   object-fit: cover;
   object-position: center;
   display: block;
   position: relative;
-  z-index: 2;
+  z-index: 5;
   border: 2px solid rgba(79,140,255,0.6);
   box-shadow: 0 0 16px rgba(79,140,255,0.5);
   transition: transform 0.3s var(--ease-out), box-shadow 0.3s;
@@ -180,19 +184,56 @@ body {
 }
 .header-logo-ring {
   position: absolute;
-  inset: -5px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  border: 2px solid transparent;
-  background: linear-gradient(135deg, var(--blue), var(--cyan), var(--blue)) border-box;
-  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: destination-out;
-  mask-composite: exclude;
-  animation: logoRingSpin 3s linear infinite;
-  z-index: 1;
+  border: 3px solid transparent;
+  border-top: 3px solid var(--blue);
+  border-right: 3px solid var(--cyan);
+  border-bottom: 3px solid var(--blue);
+  border-left: 3px solid var(--cyan);
+  filter: drop-shadow(0 0 8px var(--blue-glow));
+  animation: logoRingSpin 2s linear infinite;
+  z-index: 2;
   opacity: 0.9;
-  filter: blur(0.5px);
+}
+.header-logo-ring::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(79,140,255,0.1) 0%, rgba(0,212,255,0) 70%);
+  z-index: -1;
+  animation: logoPulseGlow 2s ease-in-out infinite;
+}
+.header-logo-ring::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--blue), var(--cyan), var(--blue), var(--cyan), var(--blue));
+  filter: blur(6px);
+  opacity: 0.6;
+  z-index: -1;
+  animation: logoConicSpin 3s linear infinite;
 }
 @keyframes logoRingSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes logoPulseGlow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); }
+}
+@keyframes logoConicSpin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
