@@ -86,7 +86,9 @@ const formatTime = secs => {
 
 const formatReceiptDate = (ts) => {
   if(!ts) return '-';
-  const d = new Date(Number(ts));
+  const n = Number(ts);
+  if(isNaN(n)) return '-';
+  const d = new Date(n);
   if(isNaN(d.getTime())) return '-';
   const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   return `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()}, ${d.getHours().toString().padStart(2,'0')}.${d.getMinutes().toString().padStart(2,'0')} WIB`;
@@ -191,7 +193,6 @@ export default function Page() {
   const [services, setServices] = useState([]);
   const [query, setQuery] = useState('');
   const [countryQuery, setCountryQuery] = useState('');
-  const [loadingSvcs, setLoadingSvcs] = useState(true);
 
   const [selectedSvc, setSelectedSvc] = useState(null);
   const [countries, setCountries] = useState([]);
@@ -231,12 +232,10 @@ export default function Page() {
   const [showConfPw, setShowConfPw] = useState(false);
 
   const [ppobItems, setPpobItems] = useState([]);
-  const [ppobLoading, setPpobLoading] = useState(false);
   const [ppobError, setPpobError] = useState('');
   const [ppobQuery, setPpobQuery] = useState('');
 
   const [historyItems, setHistoryItems] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
 
   const [toast, setToast] = useState(null);
@@ -281,14 +280,10 @@ export default function Page() {
 
   useEffect(() => {
     if (step !== 'app') return;
-    setLoadingSvcs(true);
     api('services').then(r => {
       if (r.success && Array.isArray(r.data)) {
         const base = r.data.map(s => ({ ...s, price: null, stock: null }));
         setServices(base);
-        setLoadingSvcs(false);
-      } else {
-        setLoadingSvcs(false);
       }
     });
   }, [step]);
@@ -357,9 +352,7 @@ export default function Page() {
   }, []);
 
   const fetchHistory = async () => {
-    setLoadingHistory(true);
     const r = await api('history');
-    setLoadingHistory(false);
     if (r.success && Array.isArray(r.data)) {
       setHistoryItems(r.data);
     }
@@ -431,10 +424,8 @@ export default function Page() {
   }, [showSheet]);
 
   const fetchPpob = async () => {
-    setPpobLoading(true);
     setPpobError('');
     const r = await api('h2h_products');
-    setPpobLoading(false);
     if (r.success && Array.isArray(r.data)) {
       setPpobItems(r.data);
     } else {
@@ -1104,9 +1095,9 @@ export default function Page() {
         <div className="header-row">
           <div className="header-brand">
             <div className="header-online"><div className="header-dot" /><span>Online</span></div>
-            <div className="header-title">WALZ <span>NEXUS</span></div>
+            <div className="header-title">WALZ<br/><span>NEXUS</span></div>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button className="theme-toggle" onClick={() => setTab('activity')} title="Riwayat">
               <SvgActivity />
             </button>
@@ -1140,9 +1131,9 @@ export default function Page() {
       <div className="tab-content">
         {tab === 'virtual' && !order && (
           <div style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            <div className="section-hd">
+            <div className="section-header-block">
               <h2>Layanan Virtual</h2>
-              {!loadingSvcs && <span className="count">{filteredSvcs.length} layanan</span>}
+              <span className="count">{services.length} layanan</span>
             </div>
             <div className="search-wrap">
               <span className="search-icon">⌕</span>
@@ -1237,15 +1228,14 @@ export default function Page() {
 
         {tab === 'ppob' && (
           <div style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            <div className="section-hd">
+            <div className="section-header-block">
               <h2>PPOB & TOP UP GAME</h2>
-              {!ppobLoading && !ppobError && <span className="count">{filteredPpob.length} produk</span>}
             </div>
             
             {ppobError ? (
                <div className="empty-state" style={{ padding: '60px 0' }}>
                  <div className="modal-icon text-amber" style={{ animation: 'none' }}>
-                    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="48" height="48"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <IconWarning />
                  </div>
                  <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 8, marginTop: 16 }}>Sistem Maintenance</h3>
                  <p style={{ textAlign: 'center', padding: '0 20px' }}>{ppobError}<br/>Silakan coba lagi nanti.</p>
@@ -1279,8 +1269,8 @@ export default function Page() {
         )}
 
         {tab === 'deposit' && (
-          <div className="deposit-wrap">
-            <div className="section-hd" style={{ marginBottom: 16 }}>
+          <div className="deposit-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
+            <div className="section-header-block">
               <h2>Top Up Saldo</h2>
             </div>
             {!qrisData ? (
@@ -1322,7 +1312,7 @@ export default function Page() {
 
         {tab === 'activity' && (
           <div className="activity-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            <div className="section-hd">
+            <div className="section-header-block">
               <h2>Riwayat Aktivitas</h2>
             </div>
             {historyItems.length === 0 && !loadingHistory ? (
@@ -1364,7 +1354,7 @@ export default function Page() {
         )}
 
         {tab === 'profile' && (
-          <div className="profile-wrap">
+          <div className="profile-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
             <div className="profile-avatar-row">
               <div className="profile-avatar">
                 {username ? username[0].toUpperCase() : user?.email?.[0]?.toUpperCase() || '?'}
