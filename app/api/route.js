@@ -5,6 +5,7 @@ const BASE = 'https://www.rumahotp.io/api';
 const ENDPOINTS = {
   services: '/v2/services',
   countries: '/v2/countries',
+  operators: '/v2/operators',
   order_create: '/v2/orders',
   order_status: '/v1/orders/get_status',
   deposit_create: '/v2/deposit/create',
@@ -37,7 +38,7 @@ export async function POST(request) {
   }
 
   if (endpoint === 'balance') {
-    if (!user) return NextResponse.json({ success: false, msg: 'Sesi berakhir, silakan login kembali' }, { status: 401 });
+    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
     return NextResponse.json({
       success: true,
       data: {
@@ -50,12 +51,12 @@ export async function POST(request) {
   }
 
   if (endpoint === 'profile_update') {
-    if (!user) return NextResponse.json({ success: false, msg: 'Akses ditolak' }, { status: 401 });
+    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
     const updates = {};
     if (payload.username !== undefined) updates.username = payload.username.trim();
     try {
       await updateProfile(user.email, updates);
-      return NextResponse.json({ success: true, msg: 'Profil berhasil diperbarui' });
+      return NextResponse.json({ success: true, msg: 'Profil berhasil disimpan' });
     } catch (error) {
       return NextResponse.json({ success: false, msg: error.message });
     }
@@ -101,7 +102,16 @@ export async function POST(request) {
     return NextResponse.json(data);
   }
 
-  if (!user) return NextResponse.json({ success: false, msg: 'Autentikasi diperlukan' }, { status: 401 });
+  if (endpoint === 'operators') {
+    const key = getApiKey(payload);
+    const params = new URLSearchParams({ country: payload.country, provider_id: payload.provider_id });
+    const url = `${BASE}${ENDPOINTS.operators}?${params}`;
+    const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' }, cache: 'no-store' });
+    const data = await r.json();
+    return NextResponse.json(data);
+  }
+
+  if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
 
   if (endpoint === 'deposit_create') {
     const key = getApiKey({});
@@ -113,7 +123,7 @@ export async function POST(request) {
       await redis.hset(`deposit:${data.data.id || data.data.deposit_id}`, { userId: user.id, amount: Number(actualAmt), status: 'pending' });
       return NextResponse.json(data);
     } else {
-      const errorMsg = data.message || (typeof data.data === 'string' ? data.data : 'Gagal membuat QRIS.');
+      const errorMsg = typeof data.data === 'string' ? data.data : (data.message || 'Gagal membuat QRIS.');
       return NextResponse.json({ success: false, msg: errorMsg });
     }
   }
@@ -165,7 +175,13 @@ export async function POST(request) {
       return NextResponse.json({ success: false, msg: e.message });
     }
 
-    const params = new URLSearchParams(payload);
+    const params = new URLSearchParams({
+      number_id: payload.number_id,
+      provider_id: payload.provider_id,
+      service_id: payload.service_id,
+      operator_id: payload.operator_id
+    });
+
     const r = await fetch(`${BASE}${ENDPOINTS.order_create}?${params}`, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
 
@@ -175,6 +191,7 @@ export async function POST(request) {
       await redis.hset(`order:${data.data.order_id}`, { userId: user.id, service_id: payload.service_id, number: data.data.phone_number, status: 'waiting' });
     } else {
       await addBalance(user.id, sellPrice);
+      data.msg = data.message || data.data || 'Gagal membeli nomor dari server.';
     }
     return NextResponse.json(data);
   }
