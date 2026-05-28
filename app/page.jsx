@@ -87,7 +87,7 @@ const formatTime = secs => {
 function EyeToggle({ show, onToggle }) {
   return (
     <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
-      {show ? '🙈' : '🐵'}
+      {show ? '🐵' : '🙈'}
     </button>
   );
 }
@@ -125,6 +125,11 @@ const SvgSun = () => (
 );
 const SvgMoon = () => (
   <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20" height="20"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+);
+const SvgActivity = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20" height="20">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
 );
 
 const IconCheck = () => (
@@ -176,7 +181,9 @@ export default function Page() {
   const [selectedOrderContext, setSelectedOrderContext] = useState(null);
 
   const [order, setOrder] = useState(null);
-  const [checkingSms, setCheckingSms] = useState(false);
+  const [orderExpiry, setOrderExpiry] = useState(0);
+  const [cancelCooldown, setCancelCooldown] = useState(0);
+  const [cancelingOrder, setCancelingOrder] = useState(false);
 
   const [depositAmount, setDepositAmount] = useState('');
   const [qrisData, setQrisData] = useState(null);
@@ -202,6 +209,9 @@ export default function Page() {
   const [ppobLoading, setPpobLoading] = useState(false);
   const [ppobError, setPpobError] = useState('');
   const [ppobQuery, setPpobQuery] = useState('');
+
+  const [historyItems, setHistoryItems] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
@@ -313,6 +323,14 @@ export default function Page() {
   }, [depositCooldown]);
 
   useEffect(() => {
+    const t = setInterval(() => {
+      setOrderExpiry(prev => prev > 0 ? prev - 1 : 0);
+      setCancelCooldown(prev => prev > 0 ? prev - 1 : 0);
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
     let interval;
     if (qrisData) {
       interval = setInterval(async () => {
@@ -329,6 +347,26 @@ export default function Page() {
     }
     return () => clearInterval(interval);
   }, [qrisData]);
+
+  useEffect(() => {
+    let interval;
+    if (order && !order.otp_code) {
+      interval = setInterval(async () => {
+        try {
+          const r = await api('order_status', { order_id: order.order_id });
+          if (r.success && r.data?.otp_code) {
+            setOrder(prev => ({ ...prev, otp_code: r.data.otp_code, otp_msg: r.data.otp_msg }));
+            showToast('success', 'SMS Masuk!', 'Kode OTP berhasil diterima.');
+            api('balance').then(res => res.success && setBalance(res.data.balance));
+          } else if (r.success && r.data?.status === 'cancel') {
+             setOrder(null);
+             showToast('warning', 'Dibatalkan', 'Pesanan telah dibatalkan.');
+          }
+        } catch (error) {}
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [order]);
 
   useEffect(() => {
     if (!showSheet) { 
@@ -350,10 +388,18 @@ export default function Page() {
     }
   };
 
-  useEffect(() => {
-    if (tab === 'ppob' && ppobItems.length === 0 && !ppobError) {
-      fetchPpob();
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    const r = await api('history');
+    setLoadingHistory(false);
+    if (r.success && Array.isArray(r.data)) {
+      setHistoryItems(r.data);
     }
+  };
+
+  useEffect(() => {
+    if (tab === 'ppob' && ppobItems.length === 0 && !ppobError) fetchPpob();
+    if (tab === 'activity') fetchHistory();
   }, [tab]);
 
   const startCountdown = () => {
@@ -470,7 +516,11 @@ export default function Page() {
         setHasPassword(true);
         setStep('app');
       } else {
-        showToast('error', 'Login Gagal', r.msg);
+        if (r.msg.toLowerCase().includes('belum terdaftar')) {
+          showToast('error', 'Belum Terdaftar', r.msg);
+        } else {
+          showToast('error', 'Login Gagal', r.msg);
+        }
       }
     } catch (e) {
       setBusy(false);
@@ -560,7 +610,9 @@ export default function Page() {
       });
       setOrderingProv(null);
       if (r.success) {
-        setOrder({ ...r.data, service_name: selectedSvc.service_name, service_img: selectedSvc.service_img });
+        setOrder({ ...r.data, service_name: selectedSvc.service_name, service_img: selectedSvc.service_img, operator: operatorName, country: selectedOrderContext.country.name });
+        setOrderExpiry(1200); 
+        setCancelCooldown(180);
         setShowSheet(false);
         api('balance').then(res => res.success && setBalance(res.data.balance));
       } else {
@@ -568,7 +620,7 @@ export default function Page() {
           setShowSheet(false);
           showModal('warning', 'Saldo Tidak Cukup!', 'Saldo kamu kurang untuk membeli nomor ini. Yuk top up dulu agar bisa bertransaksi dengan lancar.', () => setTab('deposit'));
         } else {
-          showToast('error', 'Pesanan Gagal', r.msg || 'Gagal membeli nomor dari server.');
+          showToast('error', 'Pesanan Gagal', r.msg || 'Stock penyedia habis, tunggu beberapa saat.');
         }
       }
     } catch(e) {
@@ -577,13 +629,17 @@ export default function Page() {
     }
   };
 
-  const checkSms = async () => {
+  const cancelOrder = async () => {
     if (!order) return;
-    setCheckingSms(true);
-    const r = await api('order_status', { order_id: order.order_id });
-    setCheckingSms(false);
-    if (r.success && r.data?.otp_code) {
-      setOrder(prev => ({ ...prev, otp_code: r.data.otp_code, otp_msg: r.data.otp_msg }));
+    setCancelingOrder(true);
+    const r = await api('order_cancel', { order_id: order.order_id });
+    setCancelingOrder(false);
+    if (r.success) {
+      showToast('success', 'Dibatalkan', 'Pesanan dibatalkan dan saldo telah dikembalikan.');
+      setOrder(null);
+      api('balance').then(res => res.success && setBalance(res.data.balance));
+    } else {
+      showToast('error', 'Gagal Batal', r.msg || 'Terjadi kesalahan saat membatalkan.');
     }
   };
 
@@ -598,7 +654,7 @@ export default function Page() {
         setQrisData({ ...r.data, actual_amount: actualAmt });
         setDepositCooldown(120);
       } else {
-        showToast('error', 'Gagal', r.msg || 'Gagal membuat QRIS.');
+        showToast('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
       }
     } catch (e) {
       setCreatingQris(false);
@@ -989,9 +1045,14 @@ export default function Page() {
             <div className="header-online"><div className="header-dot" /><span>Online</span></div>
             <div className="header-title">WALZ <span>NEXUS</span></div>
           </div>
-          <button className="theme-toggle" onClick={toggleTheme} title="Ganti Tema">
-            {theme === 'dark' ? <SvgSun /> : <SvgMoon />}
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="theme-toggle" onClick={() => setTab('activity')} title="Riwayat">
+              <SvgActivity />
+            </button>
+            <button className="theme-toggle" onClick={toggleTheme} title="Ganti Tema">
+              {theme === 'dark' ? <SvgSun /> : <SvgMoon />}
+            </button>
+          </div>
         </div>
         
         <div className="balance-card">
@@ -1056,38 +1117,63 @@ export default function Page() {
         )}
 
         {tab === 'virtual' && order && (
-          <div className="order-view">
-            <div className="order-header">
-              <button className="back-btn" onClick={() => setOrder(null)}>← Beli Lagi</button>
-              <button className="back-btn" onClick={() => api('balance').then(r => r.success && setBalance(r.data.balance))}>🔄 Refresh Saldo</button>
+          <div className="active-order-wrap">
+            <div className="ao-header">
+              <div className="ao-title">Pesanan Pending</div>
+              <button className="ao-refresh" onClick={() => api('balance').then(r => r.success && setBalance(r.data.balance))}>
+                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              </button>
             </div>
-            <div className="order-card">
-              <div className="number-block" onClick={() => navigator.clipboard.writeText(order.phone_number)}>
-                <div className="number-block-svc">{order.service_name}</div>
-                <div className="number-block-num">{order.phone_number}</div>
-                <div className="number-block-copy">📋 Tap untuk salin</div>
-                <div className="number-block-price">{fmt(order.price)}</div>
+            <div className="ao-body">
+              <div className="ao-row">
+                 <div className="ao-num-wrap" onClick={() => { navigator.clipboard.writeText(order.phone_number); showToast('success', 'Tersalin', 'Nomor disalin ke clipboard'); }}>
+                    {getFlag(order.country)} {order.phone_number} 
+                    <svg width="18" height="18" fill="none" stroke="var(--text-3)" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                 </div>
+                 <div className="ao-timer">{formatTime(orderExpiry)}</div>
               </div>
-              <div className="otp-block">
-                {!order.otp_code ? (
-                  <div className="otp-waiting">
-                    <div className="otp-waiting-icon">
-                      <svg fill="none" stroke="var(--blue2)" strokeWidth="2" viewBox="0 0 24 24" width="32"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+              <div className="ao-row">
+                 <div className="ao-prov-wrap">
+                    <span style={{ fontSize: '1.2rem' }}>📡</span> {order.operator || 'Any'}
+                 </div>
+                 <div className="ao-price">{fmt(order.price)}</div>
+              </div>
+
+              <div className="ao-status-box">
+                 <div className="ao-status-top">
+                    <div className="ao-svc-name">
+                       <img src={order.service_img} alt="" style={{ width: 24, height: 24, borderRadius: 4 }} />
+                       {order.service_name}
                     </div>
-                    <p>Menunggu SMS masuk...<br />Gunakan nomor di atas untuk verifikasi</p>
-                    <button className="btn btn-primary" onClick={checkSms} disabled={checkingSms} style={{ width: '100%', borderRadius: 'var(--r-full)' }}>
-                      {checkingSms ? <><LoadingSpinner style={{width:16, height:16}} /> Mengecek...</> : '🔄 Cek SMS'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="otp-received">
-                    <div className="otp-received-label">✅ SMS Diterima</div>
-                    <div className="otp-code-box">
-                      <div className="otp-code-val">{order.otp_code}</div>
+                    {order.otp_code ? (
+                       <div className="ao-status-text" style={{ color: 'var(--green)' }}>Selesai <IconCheck /></div>
+                    ) : (
+                       <div className="ao-status-text">Menunggu <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
+                    )}
+                 </div>
+                 
+                 {order.otp_code ? (
+                    <div style={{ background: 'var(--green-soft)', padding: '16px', borderRadius: '12px', marginTop: '10px' }}>
+                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.4rem', fontWeight: 800, color: 'var(--green)', letterSpacing: '4px', textAlign: 'center' }}>{order.otp_code}</div>
+                       <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', textAlign: 'center', marginTop: '4px', fontWeight: 600 }}>{order.otp_msg}</div>
                     </div>
-                    <div className="otp-msg-text">{order.otp_msg}</div>
-                  </div>
-                )}
+                 ) : (
+                    <div className="ao-status-desc">
+                       {cancelCooldown > 0 ? `Tunggu ${formatTime(cancelCooldown)} sebelum klik batal.` : 'Kamu sekarang bisa membatalkan pesanan ini.'}
+                    </div>
+                 )}
+              </div>
+
+              <div className="ao-actions">
+                 <button className="ao-btn ao-btn-lagi" onClick={() => setOrder(null)}>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Beli lagi
+                 </button>
+                 {!order.otp_code && (
+                     <button className="ao-btn ao-btn-batal" disabled={cancelCooldown > 0 || cancelingOrder} onClick={cancelOrder}>
+                        {cancelingOrder ? <LoadingSpinner style={{ width: 18, height: 18 }} /> : <><svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg> Batal</>}
+                     </button>
+                 )}
               </div>
             </div>
           </div>
@@ -1178,6 +1264,44 @@ export default function Page() {
                 <button className="btn btn-danger" onClick={cancelDeposit} disabled={cancelingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
                   {cancelingDeposit ? <><LoadingSpinner style={{width:16, height:16}} /> Membatalkan...</> : '✖ Batalkan Transaksi'}
                 </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'activity' && (
+          <div className="activity-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
+            <div className="section-hd">
+              <h2>Riwayat Aktivitas</h2>
+            </div>
+            {loadingHistory ? (
+              <div className="loading-grid"><LoadingSpinner /></div>
+            ) : historyItems.length === 0 ? (
+              <div className="empty-state">
+                <span className="icon">📝</span>
+                <p>Belum ada riwayat transaksi</p>
+              </div>
+            ) : (
+              <div className="history-list">
+                {historyItems.map((item, i) => (
+                   <div key={i} className="history-card" style={{ animationDelay: `${(i % 15) * 0.03}s` }}>
+                      <div className="history-icon">
+                         {item.itemType === 'order' ? <SvgProduct /> : <SvgTopUp />}
+                      </div>
+                      <div className="history-info">
+                         <div className="history-title">
+                            {item.itemType === 'order' ? `Order: ${item.number || 'Virtual Number'}` : `Deposit Saldo`}
+                         </div>
+                         <div className="history-date">
+                            {new Date(Number(item.timestamp)).toLocaleString('id-ID')}
+                         </div>
+                      </div>
+                      <div className={`history-status ${item.status}`}>
+                         <div className="history-amt">{item.itemType === 'deposit' ? '+' : '-'}{fmt(item.amount || item.price)}</div>
+                         <span>{item.status.toUpperCase()}</span>
+                      </div>
+                   </div>
+                ))}
               </div>
             )}
           </div>
