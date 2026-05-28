@@ -137,6 +137,7 @@ export async function POST(request) {
       await redis.hset(`deposit:${depId}`, { 
         userId: user.id, 
         amount: Number(actualAmt), 
+        base_amount: Number(payload.amount),
         status: 'pending',
         timestamp: Date.now()
       });
@@ -211,6 +212,7 @@ export async function POST(request) {
       await redis.hset(`order:${data.data.order_id}`, { 
         userId: user.id, 
         service_id: payload.service_id, 
+        service_name: payload.service_name || 'Virtual Number',
         number: data.data.phone_number, 
         country: targetCountry?.name || '',
         operator: payload.operator_id || 'any',
