@@ -191,7 +191,7 @@ export default function Page() {
   const [countries, setCountries] = useState([]);
   const [loadingCountries, setLoadingCountries] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
-  
+
   const [expandedCountry, setExpandedCountry] = useState(null);
   const [orderingProv, setOrderingProv] = useState(null);
 
@@ -233,6 +233,7 @@ export default function Page() {
 
   const [historyItems, setHistoryItems] = useState([]);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
+  const [depositCountdown, setDepositCountdown] = useState(0);
 
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
@@ -353,6 +354,40 @@ export default function Page() {
     if (showLoader) setLoadingHistory(false);
     if (r.success && Array.isArray(r.data)) {
       setHistoryItems(r.data);
+    }
+  };
+
+  // Realtime countdown for pending deposit expiry
+  useEffect(() => {
+    if (!selectedHistoryItem || selectedHistoryItem.itemType !== 'deposit' ||
+        (selectedHistoryItem.status !== 'pending' && selectedHistoryItem.status !== 'waiting')) {
+      setDepositCountdown(0);
+      return;
+    }
+    const expiredAt = selectedHistoryItem.expired_at
+      ? Number(selectedHistoryItem.expired_at)
+      : Number(selectedHistoryItem.timestamp) + 13 * 60 * 1000;
+    const update = () => setDepositCountdown(Math.max(0, Math.floor((expiredAt - Date.now()) / 1000)));
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [selectedHistoryItem?.id, selectedHistoryItem?.status]);
+
+  const downloadQrisImage = async (imageUrl) => {
+    try {
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `qris-payment-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      showToast('success', 'Berhasil', 'Gambar QRIS berhasil diunduh');
+    } catch {
+      window.open(imageUrl, '_blank');
     }
   };
 
@@ -670,7 +705,7 @@ export default function Page() {
     setShowOperatorModal(false);
     setOrderingProv(selectedOrderContext.provider.provider_id);
     showToast('info', 'Memproses', 'Membuat pesanan...');
-    
+
     try {
       const r = await api('order_create', {
         number_id: selectedOrderContext.country.number_id,
@@ -828,7 +863,7 @@ export default function Page() {
           <h1 className="logo-title">WALZ<br/><span className="text-cyan">NEXUS</span></h1>
           <p className="logo-subtitle">LAYANAN DIGITAL PREMIUM</p>
         </div>
-        
+
         <div className="welcome-card">
           <button className="btn btn-primary" onClick={() => setStep('register')} style={{ height: 60, fontSize: '1.05rem', borderRadius: 'var(--r-full)' }}>
             📝 Buat Akun Baru
@@ -1173,7 +1208,7 @@ export default function Page() {
             </button>
           </div>
         </div>
-        
+
         <div className="balance-card">
           <div className="balance-bg-shape"></div>
           <div className="balance-bg-shape2"></div>
@@ -1265,7 +1300,7 @@ export default function Page() {
                        <div className="ao-status-text">Menunggu <IconClock /></div>
                     )}
                  </div>
-                 
+
                  {order.otp_code ? (
                     <div style={{ background: 'var(--green-soft)', padding: '16px', borderRadius: '12px', marginTop: '10px' }}>
                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.4rem', fontWeight: 900, color: 'var(--green)', letterSpacing: '4px', textAlign: 'center' }}>{order.otp_code}</div>
@@ -1298,7 +1333,7 @@ export default function Page() {
             <div className="section-header-block">
               <h2>PPOB & TOP UP GAME</h2>
             </div>
-            
+
             {ppobError ? (
                <div className="maintenance-box">
                  <IconWarning />
@@ -1587,10 +1622,11 @@ export default function Page() {
            <div className="receipt-card">
               <div className="receipt-total-label">Total Transaksi</div>
               <div className="receipt-total-value">{(selectedHistoryItem.total || selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
-              
+
               {selectedHistoryItem.itemType === 'deposit' && (selectedHistoryItem.diterima || selectedHistoryItem.base_amount) && (selectedHistoryItem.total || selectedHistoryItem.amount) > (selectedHistoryItem.diterima || selectedHistoryItem.base_amount) && (
-                <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--green)', fontWeight: 700, marginTop: -18, marginBottom: 20, background: 'var(--green-soft)', padding: '5px 14px', borderRadius: 'var(--r-full)', display: 'inline-block', marginLeft: 'auto', marginRight: 'auto', width: 'fit-content' }}>
-                  ✓ Saldo masuk: {(selectedHistoryItem.diterima || selectedHistoryItem.base_amount || 0).toLocaleString('id-ID')} IDR
+                <div className="receipt-saldo-badge">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  Saldo masuk&nbsp;<strong>{(selectedHistoryItem.diterima || selectedHistoryItem.base_amount || 0).toLocaleString('id-ID')} IDR</strong>
                 </div>
               )}
 
@@ -1604,13 +1640,14 @@ export default function Page() {
                  </div>
               </div>
 
-              <div className="receipt-row">
+              <div className="receipt-row receipt-row-id">
                  <div className="receipt-row-label">ID Reff</div>
-                 <div className="receipt-row-value" style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px'}}>
-                   {selectedHistoryItem.id} 
-                   <div className="receipt-copy" onClick={() => { navigator.clipboard.writeText(selectedHistoryItem.id); showToast('success', 'Tersalin', 'ID disalin'); }}>
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                   </div>
+                 <div className="receipt-id-wrap">
+                   <span className="receipt-id-text">{selectedHistoryItem.id}</span>
+                   <button className="receipt-copy-btn" onClick={() => { navigator.clipboard.writeText(selectedHistoryItem.id); showToast('success', 'Tersalin', 'ID berhasil disalin'); }}>
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                      Salin
+                   </button>
                  </div>
               </div>
               <div className="receipt-row">
@@ -1626,9 +1663,33 @@ export default function Page() {
 
               {selectedHistoryItem.itemType === 'deposit' && (selectedHistoryItem.status === 'pending' || selectedHistoryItem.status === 'waiting') && selectedHistoryItem.qr_image && (
                 <div className="qris-blue-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.5px' }}>QRIS</div>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700 }}>GPN</div>
+                  {/* Expiry Countdown Header */}
+                  {depositCountdown > 0 && (
+                    <div className="qris-expiry-bar">
+                      <div className="qris-expiry-info">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M12 6v6l4 2"/></svg>
+                        <span>Batas Waktu Bayar</span>
+                      </div>
+                      <div className="qris-expiry-digits">
+                        <span className="qris-digit-box">{String(Math.floor(depositCountdown / 60)).padStart(2,'0')[0]}</span>
+                        <span className="qris-digit-box">{String(Math.floor(depositCountdown / 60)).padStart(2,'0')[1]}</span>
+                        <span className="qris-digit-sep">:</span>
+                        <span className="qris-digit-box">{String(depositCountdown % 60).padStart(2,'0')[0]}</span>
+                        <span className="qris-digit-box">{String(depositCountdown % 60).padStart(2,'0')[1]}</span>
+                      </div>
+                    </div>
+                  )}
+                  {depositCountdown === 0 && (
+                    <div className="qris-expiry-bar qris-expiry-expired">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M15 9l-6 6M9 9l6 6"/></svg>
+                      <span>Waktu Pembayaran Habis</span>
+                    </div>
+                  )}
+                  <div className="qris-blue-header-row">
+                    <div style={{ fontWeight: 900, fontSize: '1.15rem', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 8px', fontSize: '0.9rem' }}>QRIS</span>
+                    </div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.9, letterSpacing: '0.05em' }}>GPN ✦</div>
                   </div>
                   <div className="qris-blue-title">CINDIGITAL GROUP</div>
                   <div className="qris-blue-nmid">NMID: ID2025429755718</div>
@@ -1636,13 +1697,20 @@ export default function Page() {
                     <img src={selectedHistoryItem.qr_image} alt="QRIS" />
                   </div>
                   <div className="qris-blue-total">
-                     <span>Total</span>
-                     <span>{(selectedHistoryItem.total || selectedHistoryItem.amount || 0).toLocaleString('id-ID')} IDR</span>
+                     <span>Total Bayar</span>
+                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1.05rem' }}>{(selectedHistoryItem.total || selectedHistoryItem.amount || 0).toLocaleString('id-ID')} IDR</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => { const depId = selectedHistoryItem.id; const depAmt = selectedHistoryItem.total || selectedHistoryItem.amount || 0; setSelectedHistoryItem(null); cancelHistoryDeposit(depId, depAmt); }} disabled={busy}>Batalkan</button>
-                    <button className="btn" style={{ flex: 1, background: '#fff', color: '#0b63f6' }} onClick={() => window.open(selectedHistoryItem.qr_image, '_blank')}>Download</button>
+                  <div style={{ display: 'flex', gap: 8, padding: '12px 18px 0' }}>
+                    <button className="btn qris-btn-cancel" onClick={() => { const depId = selectedHistoryItem.id; const depAmt = selectedHistoryItem.total || selectedHistoryItem.amount || 0; setSelectedHistoryItem(null); cancelHistoryDeposit(depId, depAmt); }} disabled={busy}>
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                      Batalkan
+                    </button>
+                    <button className="btn qris-btn-download" onClick={() => downloadQrisImage(selectedHistoryItem.qr_image)}>
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                      Unduh QRIS
+                    </button>
                   </div>
+                  <div className="qris-scan-hint" style={{ padding: '10px 18px 16px' }}>Sistem memverifikasi pembayaran secara otomatis</div>
                 </div>
               )}
 
@@ -1652,7 +1720,7 @@ export default function Page() {
                  <div className="receipt-row-label">Nominal</div>
                  <div className="receipt-row-value">{(selectedHistoryItem.diterima || selectedHistoryItem.base_amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
               </div>
-              
+
               {selectedHistoryItem.itemType === 'deposit' && (
                 <div className="receipt-row">
                    <div className="receipt-row-label">Biaya Admin</div>
@@ -1661,7 +1729,7 @@ export default function Page() {
                    </div>
                 </div>
               )}
-              
+
               <div className="receipt-row" style={{ color: 'var(--blue2)', fontWeight: 800 }}>
                  <div className="receipt-row-label" style={{ color: 'var(--blue2)' }}>Total Pembayaran</div>
                  <div className="receipt-row-value">{(selectedHistoryItem.total || selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
@@ -1709,7 +1777,7 @@ export default function Page() {
             filteredCountries.map(c => {
               const totalStock = c.available.length;
               const isExpanded = expandedCountry === c.number_id;
-              
+
               return (
                 <div key={c.number_id || c.name} className="country-wrapper">
                   <div className={`country-item ${isExpanded ? 'selected' : ''}`} onClick={() => setExpandedCountry(isExpanded ? null : c.number_id)}>
@@ -1722,7 +1790,7 @@ export default function Page() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {isExpanded && (
                     <div className="provider-list">
                       {c.available.map(prov => (
