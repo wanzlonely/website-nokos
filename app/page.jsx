@@ -85,9 +85,24 @@ const formatTime = secs => {
 };
 
 const formatReceiptDate = (ts) => {
+  if(!ts) return '';
   const d = new Date(Number(ts));
   const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   return `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()}, ${d.getHours().toString().padStart(2,'0')}.${d.getMinutes().toString().padStart(2,'0')} WIB`;
+};
+
+const getOpInitials = (name) => {
+  const n = name.toLowerCase();
+  if(n === 'any') return 'AN';
+  if(n.includes('three') || n === '3') return '3';
+  if(n.includes('telkom')) return 'TE';
+  if(n.includes('im3') || n.includes('indosat')) return 'IM';
+  if(n.includes('smartfren')) return 'SM';
+  if(n.includes('axis')) return 'AX';
+  if(n.includes('xl')) return 'XL';
+  if(n.includes('bolt')) return 'BO';
+  if(n.includes('maroc')) return 'MT';
+  return name.substring(0, 2).toUpperCase();
 };
 
 function EyeToggle({ show, onToggle }) {
@@ -339,43 +354,33 @@ export default function Page() {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    let interval;
-    if (qrisData) {
-      interval = setInterval(async () => {
-        try {
-          const r = await api('deposit_status', { deposit_id: qrisData.id });
-          if (r.success && r.status === 'paid') {
-            setBalance(r.new_balance);
-            setQrisData(null);
-            setDepositAmount('');
-            showToast('success', 'Berhasil', 'Deposit berhasil masuk!');
-          }
-        } catch (error) {}
-      }, 4000);
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    const r = await api('history');
+    setLoadingHistory(false);
+    if (r.success && Array.isArray(r.data)) {
+      setHistoryItems(r.data);
     }
-    return () => clearInterval(interval);
-  }, [qrisData]);
+  };
 
   useEffect(() => {
     let interval;
-    if (order && !order.otp_code) {
-      interval = setInterval(async () => {
-        try {
-          const r = await api('order_status', { order_id: order.order_id });
-          if (r.success && r.data?.otp_code) {
-            setOrder(prev => ({ ...prev, otp_code: r.data.otp_code, otp_msg: r.data.otp_msg }));
-            showToast('success', 'SMS Masuk!', 'Kode OTP berhasil diterima.');
-            api('balance').then(res => res.success && setBalance(res.data.balance));
-          } else if (r.success && r.data?.status === 'cancel') {
-             setOrder(null);
-             showToast('warning', 'Dibatalkan', 'Pesanan telah dibatalkan.');
-          }
-        } catch (error) {}
-      }, 5000);
+    if (tab === 'activity') {
+      fetchHistory();
+      interval = setInterval(fetchHistory, 5000);
     }
     return () => clearInterval(interval);
-  }, [order]);
+  }, [tab]);
+
+  useEffect(() => {
+    if (selectedHistoryItem) {
+      const updated = historyItems.find(h => h.id === selectedHistoryItem.id);
+      if (updated && updated.status !== selectedHistoryItem.status) {
+        setSelectedHistoryItem(updated);
+        api('balance').then(res => res.success && setBalance(res.data.balance));
+      }
+    }
+  }, [historyItems]);
 
   useEffect(() => {
     if (!showSheet) { 
@@ -397,18 +402,10 @@ export default function Page() {
     }
   };
 
-  const fetchHistory = async () => {
-    setLoadingHistory(true);
-    const r = await api('history');
-    setLoadingHistory(false);
-    if (r.success && Array.isArray(r.data)) {
-      setHistoryItems(r.data);
-    }
-  };
-
   useEffect(() => {
-    if (tab === 'ppob' && ppobItems.length === 0 && !ppobError) fetchPpob();
-    if (tab === 'activity') fetchHistory();
+    if (tab === 'ppob' && ppobItems.length === 0 && !ppobError) {
+      fetchPpob();
+    }
   }, [tab]);
 
   const startCountdown = () => {
@@ -616,6 +613,7 @@ export default function Page() {
         provider_id: selectedOrderContext.provider.provider_id,
         service_id: selectedSvc.service_code,
         service_name: selectedSvc.service_name,
+        service_img: selectedSvc.service_img,
         operator_id: operatorName
       });
       setOrderingProv(null);
@@ -639,14 +637,13 @@ export default function Page() {
     }
   };
 
-  const cancelOrder = async () => {
-    if (!order) return;
-    setCancelingOrder(true);
-    const r = await api('order_cancel', { order_id: order.order_id });
-    setCancelingOrder(false);
-    if (r.success) {
+  const cancelHistoryOrder = async (orderId) => {
+    setBusy(true);
+    const r = await api('order_cancel', { order_id: orderId });
+    setBusy(false);
+    if(r.success) {
       showToast('success', 'Dibatalkan', 'Pesanan dibatalkan dan saldo telah dikembalikan.');
-      setOrder(null);
+      fetchHistory();
       api('balance').then(res => res.success && setBalance(res.data.balance));
     } else {
       showToast('error', 'Gagal Batal', r.msg || 'Terjadi kesalahan saat membatalkan.');
@@ -672,15 +669,29 @@ export default function Page() {
     }
   };
 
-  const cancelDeposit = async () => {
-    if (!qrisData) return;
-    setCancelingDeposit(true);
-    await api('deposit_cancel', { deposit_id: qrisData.id });
-    setCancelingDeposit(false);
-    
-    setQrisData(null); 
-    setDepositAmount(''); 
-    showToast('info', 'Dibatalkan', 'Transaksi pembayaran berhasil dibatalkan.');
+  const checkHistoryDeposit = async (depId) => {
+    setBusy(true);
+    const r = await api('deposit_status', { deposit_id: depId });
+    setBusy(false);
+    if(r.success && r.status === 'paid') {
+      showToast('success', 'Berhasil', 'Pembayaran telah diterima.');
+      fetchHistory();
+      api('balance').then(res => res.success && setBalance(res.data.balance));
+    } else {
+      showToast('warning', 'Pending', 'Pembayaran belum masuk.');
+    }
+  };
+
+  const cancelHistoryDeposit = async (depId) => {
+    setBusy(true);
+    const r = await api('deposit_cancel', { deposit_id: depId });
+    setBusy(false);
+    if(r.success) {
+      showToast('info', 'Dibatalkan', 'Transaksi deposit dibatalkan.');
+      fetchHistory();
+    } else {
+      showToast('error', 'Gagal Batal', 'Gagal membatalkan transaksi.');
+    }
   };
 
   const saveProfile = async () => {
@@ -1126,69 +1137,6 @@ export default function Page() {
           </div>
         )}
 
-        {tab === 'virtual' && order && (
-          <div className="active-order-wrap">
-            <div className="ao-header">
-              <div className="ao-title">Pesanan Pending</div>
-              <button className="ao-refresh" onClick={() => api('balance').then(r => r.success && setBalance(r.data.balance))}>
-                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              </button>
-            </div>
-            <div className="ao-body">
-              <div className="ao-row">
-                 <div className="ao-num-wrap" onClick={() => { navigator.clipboard.writeText(order.phone_number); showToast('success', 'Tersalin', 'Nomor disalin ke clipboard'); }}>
-                    {getFlag(order.country)} {order.phone_number} 
-                    <svg width="18" height="18" fill="none" stroke="var(--text-3)" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                 </div>
-                 <div className="ao-timer">{formatTime(orderExpiry)}</div>
-              </div>
-              <div className="ao-row">
-                 <div className="ao-prov-wrap">
-                    <span style={{ fontSize: '1.2rem' }}>📡</span> {order.operator || 'Any'}
-                 </div>
-                 <div className="ao-price">{fmt(order.price)}</div>
-              </div>
-
-              <div className="ao-status-box">
-                 <div className="ao-status-top">
-                    <div className="ao-svc-name">
-                       <img src={order.service_img} alt="" style={{ width: 24, height: 24, borderRadius: 4 }} />
-                       {order.service_name}
-                    </div>
-                    {order.otp_code ? (
-                       <div className="ao-status-text" style={{ color: 'var(--green)' }}>Selesai <IconCheck /></div>
-                    ) : (
-                       <div className="ao-status-text">Menunggu <IconClock /></div>
-                    )}
-                 </div>
-                 
-                 {order.otp_code ? (
-                    <div style={{ background: 'var(--green-soft)', padding: '16px', borderRadius: '12px', marginTop: '10px' }}>
-                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.4rem', fontWeight: 900, color: 'var(--green)', letterSpacing: '4px', textAlign: 'center' }}>{order.otp_code}</div>
-                       <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', textAlign: 'center', marginTop: '4px', fontWeight: 600 }}>{order.otp_msg}</div>
-                    </div>
-                 ) : (
-                    <div className="ao-status-desc">
-                       {cancelCooldown > 0 ? `Tunggu ${formatTime(cancelCooldown)} sebelum klik batal.` : 'Kamu sekarang bisa membatalkan pesanan ini.'}
-                    </div>
-                 )}
-              </div>
-
-              <div className="ao-actions">
-                 <button className="ao-btn ao-btn-lagi" onClick={() => setOrder(null)}>
-                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Beli lagi
-                 </button>
-                 {!order.otp_code && (
-                     <button className="ao-btn ao-btn-batal" disabled={cancelCooldown > 0 || cancelingOrder} onClick={cancelOrder}>
-                        {cancelingOrder ? <LoadingSpinner style={{ width: 18, height: 18 }} /> : <><svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg> Batal</>}
-                     </button>
-                 )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {tab === 'ppob' && (
           <div style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
             <div className="section-hd">
@@ -1306,7 +1254,7 @@ export default function Page() {
                         </div>
                         <div className="history-info">
                            <div className="history-title">
-                              {item.itemType === 'order' ? `${item.service_name || 'Virtual Number'} - ${item.operator}` : `Deposit Saldo`}
+                              {item.itemType === 'order' ? `${item.service_name || 'Virtual Number'} - ${item.operator || 'Any'}` : `Deposit Saldo QRIS`}
                            </div>
                            <div className="history-date">
                               {formatReceiptDate(item.timestamp)}
@@ -1431,7 +1379,7 @@ export default function Page() {
               <div style={{ flex: 1, textAlign: 'center', marginLeft: '-24px', fontWeight: 800 }}>Payment</div>
            </div>
 
-           <div className={`receipt-header-bg ${selectedHistoryItem.status}`}>
+           <div className={`receipt-header-bg ${selectedHistoryItem.status === 'completed' || selectedHistoryItem.status === 'success' || selectedHistoryItem.status === 'paid' ? 'completed' : selectedHistoryItem.status === 'canceled' || selectedHistoryItem.status === 'cancel' ? 'canceled' : 'pending'}`}>
               <div className="receipt-icon-circle">
                  {selectedHistoryItem.status === 'completed' || selectedHistoryItem.status === 'success' || selectedHistoryItem.status === 'paid' ? <IconCheck /> : selectedHistoryItem.status === 'canceled' || selectedHistoryItem.status === 'cancel' ? <IconCross /> : <IconClock />}
               </div>
@@ -1451,7 +1399,7 @@ export default function Page() {
                  </div>
                  <div className="receipt-box-info">
                     <div className="receipt-box-title">{selectedHistoryItem.itemType === 'order' ? selectedHistoryItem.service_name : 'Deposit Saldo'}</div>
-                    <div className="receipt-box-sub">{selectedHistoryItem.itemType === 'order' ? `${selectedHistoryItem.country} / ${selectedHistoryItem.operator}` : 'QRIS / DANA'}</div>
+                    <div className="receipt-box-sub">{selectedHistoryItem.itemType === 'order' ? `${selectedHistoryItem.country || ''} / ${selectedHistoryItem.operator || 'Any'}` : 'QRIS / DANA'}</div>
                  </div>
               </div>
 
@@ -1472,6 +1420,36 @@ export default function Page() {
                 <div className="receipt-row">
                    <div className="receipt-row-label">Nomor Telp</div>
                    <div className="receipt-row-value">{selectedHistoryItem.number}</div>
+                </div>
+              )}
+
+              {selectedHistoryItem.itemType === 'deposit' && selectedHistoryItem.status === 'pending' && selectedHistoryItem.qr_image && (
+                <div className="qris-blue-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.5px' }}>QRIS</div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700 }}>GPN</div>
+                  </div>
+                  <div className="qris-blue-title">CINDIGITAL GROUP</div>
+                  <div className="qris-blue-nmid">NMID: ID2025429755718</div>
+                  <div className="qris-blue-qr-wrap">
+                    <img src={selectedHistoryItem.qr_image} alt="QRIS" />
+                  </div>
+                  <div className="qris-blue-total">
+                     <span>Total</span>
+                     <span>{(selectedHistoryItem.amount || 0).toLocaleString('id-ID')} IDR</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => cancelHistoryDeposit(selectedHistoryItem.id)} disabled={busy}>Batalkan</button>
+                    <button className="btn" style={{ flex: 1, background: '#fff', color: '#0b63f6' }} onClick={() => window.open(selectedHistoryItem.qr_image, '_blank')}>Download</button>
+                  </div>
+                  <button className="btn" style={{ width: '100%', background: 'transparent', border: '1px solid #fff', color: '#fff' }} onClick={() => checkHistoryDeposit(selectedHistoryItem.id)} disabled={busy}>Saya sudah membayar ✔</button>
+                </div>
+              )}
+
+              {selectedHistoryItem.itemType === 'order' && selectedHistoryItem.status === 'waiting' && (
+                <div className="qris-blue-card" style={{ background: 'var(--glass)', color: 'var(--text)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-3)', marginBottom: 16 }}>Menunggu SMS verifikasi masuk. Anda dapat membatalkan jika terlalu lama.</div>
+                  <button className="btn btn-danger" onClick={() => cancelHistoryOrder(selectedHistoryItem.id)} disabled={busy} style={{ width: '100%' }}>Batalkan Pesanan</button>
                 </div>
               )}
 
@@ -1496,10 +1474,12 @@ export default function Page() {
                  Gateway pembayaran oleh <strong>RumahOTP</strong>
               </div>
 
-              <div className="receipt-actions">
-                 <button className="btn btn-secondary" onClick={() => window.open('https://rumahotp.io', '_blank')}>Support</button>
-                 <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => setSelectedHistoryItem(null)}>Selesai</button>
-              </div>
+              {selectedHistoryItem.status !== 'pending' && selectedHistoryItem.status !== 'waiting' && (
+                 <div className="receipt-actions">
+                    <button className="btn btn-secondary" onClick={() => window.open('https://rumahotp.io', '_blank')}>Support</button>
+                    <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => setSelectedHistoryItem(null)}>Selesai</button>
+                 </div>
+              )}
            </div>
         </div>
       )}
@@ -1582,7 +1562,7 @@ export default function Page() {
             <div className="operator-grid">
               {operators.map(op => (
                 <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op.name)}>
-                  <div className="operator-icon-placeholder">{op.name.substring(0,2).toUpperCase()}</div>
+                  <div className="operator-icon-placeholder">{getOpInitials(op.name)}</div>
                   <span>{op.name}</span>
                 </button>
               ))}
