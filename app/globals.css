@@ -1,1982 +1,901 @@
-'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
-
-const api = async (endpoint, payload = {}) => {
-  try {
-    const res = await fetch('/api', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ endpoint, ...payload }),
-      credentials: 'include',
-    });
-    return res.json();
-  } catch (e) {
-    return { success: false, msg: 'Koneksi gagal' };
-  }
-};
-const authApi = async (path, payload) => {
-  try {
-    const res = await fetch(`/api/auth/${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      credentials: 'include',
-    });
-    return res.json();
-  } catch (e) {
-    return { success: false, msg: 'Koneksi gagal' };
-  }
-};
-
-const fmt = n => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
-const OTP_DURATION = 300;
-const FLAGS = {
-  indonesia: '🇮🇩', malaysia: '🇲🇾', 'united states': '🇺🇸', usa: '🇺🇸',
-  india: '🇮🇳', philippines: '🇵🇭', vietnam: '🇻🇳', thailand: '🇹🇭',
-  singapore: '🇸🇬', myanmar: '🇲🇲', cambodia: '🇰🇭', laos: '🇱🇦',
-  brazil: '🇧🇷', mexico: '🇲🇽', russia: '🇷🇺', china: '🇨🇳',
-  'united kingdom': '🇬🇧', uk: '🇬🇧', france: '🇫🇷', germany: '🇩🇪',
-  turkey: '🇹🇷', nigeria: '🇳🇬', ghana: '🇬🇭', kenya: '🇰🇪',
-  pakistan: '🇵🇰', bangladesh: '🇧🇩', egypt: '🇪🇬', ukraine: '🇺🇦',
-  poland: '🇵🇱', 'south africa': '🇿🇦', colombia: '🇨🇴', argentina: '🇦🇷',
-  peru: '🇵🇪', ethiopia: '🇪🇹', tanzania: '🇹🇿', netherlands: '🇳🇱',
-  spain: '🇪🇸', afghanistan: '🇦🇫', albania: '🇦🇱', algeria: '🇩🇿',
-  andorra: '🇦🇩', angola: '🇦🇴', 'antigua and barbuda': '🇦🇬', armenia: '🇦🇲',
-  australia: '🇦🇺', austria: '🇦🇹', azerbaijan: '🇦🇿', bahamas: '🇧🇸',
-  bahrain: '🇧🇭', barbados: '🇧🇧', belarus: '🇧🇾', belgium: '🇧🇪',
-  belize: '🇧🇿', benin: '🇧🇯', bhutan: '🇧🇹', bolivia: '🇧🇴',
-  'bosnia and herzegovina': '🇧🇦', botswana: '🇧🇼', brunei: '🇧🇳', bulgaria: '🇧🇬',
-  'burkina faso': '🇧🇫', burundi: '🇧🇮', 'cabo verde': '🇨🇻', 'cape verde': '🇨🇻',
-  cameroon: '🇨🇲', canada: '🇨🇦', 'central african republic': '🇨🇫', chad: '🇹🇩',
-  chile: '🇨🇱', comoros: '🇰🇲', congo: '🇨🇬', 'costa rica': '🇨🇷',
-  croatia: '🇭🇷', cuba: '🇨🇺', cyprus: '🇨🇾', czechia: '🇨🇿',
-  'czech republic': '🇨🇿', denmark: '🇩🇰', djibouti: '🇩🇯', dominica: '🇩🇲',
-  'dominican republic': '🇩🇴', 'democratic republic of the congo': '🇨🇩', ecuador: '🇪🇨', 'el salvador': '🇸🇻',
-  'equatorial guinea': '🇬🇶', eritrea: '🇪🇷', estonia: '🇪🇪', eswatini: '🇸🇿',
-  fiji: '🇫🇯', finland: '🇫🇮', gabon: '🇬🇦', gambia: '🇬🇲',
-  georgia: '🇬🇪', greece: '🇬🇷', grenada: '🇬🇩', guatemala: '🇬🇹',
-  guinea: '🇬🇳', 'guinea-bissau': '🇬🇼', guyana: '🇬🇾', haiti: '🇭🇹',
-  honduras: '🇭🇳', hungary: '🇭🇺', iceland: '🇮🇸', iran: '🇮🇷',
-  iraq: '🇮🇶', ireland: '🇮🇪', israel: '🇮🇱', italy: '🇮🇹',
-  'ivory coast': '🇨🇮', "cote d'ivoire": '🇨🇮', jamaica: '🇯🇲', japan: '🇯🇵',
-  jordan: '🇯🇴', kazakhstan: '🇰🇿', kiribati: '🇰🇮', kuwait: '🇰🇼',
-  kyrgyzstan: '🇰🇬', latvia: '🇱🇻', lebanon: '🇱🇧', lesotho: '🇱🇸',
-  liberia: '🇱🇷', libya: '🇱🇾', liechtenstein: '🇱🇮', lithuania: '🇱🇹',
-  luxembourg: '🇱🇺', madagascar: '🇲🇬', malawi: '🇲🇼', maldives: '🇲🇻',
-  mali: '🇲🇱', malta: '🇲🇹', 'marshall islands': '🇲🇭', mauritania: '🇲🇷',
-  mauritius: '🇲🇺', micronesia: '🇫🇲', moldova: '🇲🇩', monaco: '🇲🇨',
-  mongolia: '🇲🇳', montenegro: '🇲🇪', morocco: '🇲🇦', mozambique: '🇲🇿',
-  namibia: '🇳🇦', nauru: '🇳🇷', nepal: '🇳🇵', 'new zealand': '🇳🇿',
-  nicaragua: '🇳🇮', niger: '🇳🇪', 'north korea': '🇰🇵', 'north macedonia': '🇲🇰',
-  norway: '🇳🇴', oman: '🇴🇲', palau: '🇵🇼', palestine: '🇵🇸',
-  panama: '🇵🇦', 'papua new guinea': '🇵🇬', paraguay: '🇵🇾', portugal: '🇵🇹',
-  qatar: '🇶🇦', romania: '🇷🇴', rwanda: '🇷🇼', 'saint kitts and nevis': '🇰🇳',
-  'saint lucia': '🇱🇨', 'saint vincent and the grenadines': '🇻🇨', samoa: '🇼🇸', 'san marino': '🇸🇲',
-  'sao tome and principe': '🇸🇹', 'saudi arabia': '🇸🇦', senegal: '🇸🇳', serbia: '🇷🇸',
-  seychelles: '🇸🇨', 'sierra leone': '🇸🇱', slovakia: '🇸🇰', slovenia: '🇸🇮',
-  'solomon islands': '🇸🇧', somalia: '🇸🇴', 'south korea': '🇰🇷', korea: '🇰🇷',
-  'south sudan': '🇸🇸', 'sri lanka': '🇱🇰', sudan: '🇸🇩', suriname: '🇸🇷',
-  sweden: '🇸🇪', switzerland: '🇨🇭', syria: '🇸🇾', taiwan: '🇹🇼',
-  tajikistan: '🇹🇯', 'timor-leste': '🇹🇱', 'east timor': '🇹🇱', togo: '🇹🇬',
-  tonga: '🇹🇴', 'trinidad and tobago': '🇹🇹', tunisia: '🇹🇳', turkmenistan: '🇹🇲',
-  tuvalu: '🇹🇻', uganda: '🇺🇬', 'united arab emirates': '🇦🇪', uae: '🇦🇪',
-  uruguay: '🇺🇾', uzbekistan: '🇺🇿', vanuatu: '🇻🇺', 'vatican city': '🇻🇦',
-  vatican: '🇻🇦', venezuela: '🇻🇪', yemen: '🇾🇪', zambia: '🇿🇲',
-  zimbabwe: '🇿🇼',
-};
-const getFlag = name => FLAGS[name?.toLowerCase()] || '🌐';
-
-const formatTime = secs => {
-  const m = Math.floor(secs / 60).toString().padStart(2, '0');
-  const s = (secs % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-};
-
-const formatReceiptDate = (ts) => {
-  if(!ts) return '-';
-  const n = Number(ts);
-  if(isNaN(n)) return '-';
-  const d = new Date(n);
-  if(isNaN(d.getTime())) return '-';
-  const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-  return `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()}, ${d.getHours().toString().padStart(2,'0')}.${d.getMinutes().toString().padStart(2,'0')} WIB`;
-};
-
-function EyeToggle({ show, onToggle }) {
-  return (
-    <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
-      {show ? '🐵' : '🙈'}
-    </button>
-  );
+:root[data-theme="dark"] {
+  --bg: #050b18;
+  --bg2: #080f22;
+  --surface: #0c1830;
+  --surface2: #101e3a;
+  --glass: rgba(255,255,255,0.04);
+  --glass2: rgba(255,255,255,0.07);
+  --glass3: rgba(255,255,255,0.12);
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --border-blue: rgba(79,140,255,0.35);
+  --border-blue2: rgba(79,140,255,0.6);
+  --blue: #4f8cff;
+  --blue2: #6ba3ff;
+  --blue-glow: rgba(79,140,255,0.4);
+  --blue-soft: rgba(79,140,255,0.10);
+  --cyan: #00d4ff;
+  --cyan-soft: rgba(0,212,255,0.09);
+  --green: #00e87a;
+  --green-glow: rgba(0,232,122,0.32);
+  --green-soft: rgba(0,232,122,0.09);
+  --amber: #ffb340;
+  --amber-soft: rgba(255,179,64,0.12);
+  --red: #ff4060;
+  --red-soft: rgba(255,64,96,0.12);
+  --text: rgba(255,255,255,0.96);
+  --text-2: rgba(255,255,255,0.62);
+  --text-3: rgba(255,255,255,0.36);
+  --text-4: rgba(255,255,255,0.18);
+  --qris-bg: #ffffff;
+  --card-shadow: 0 8px 32px rgba(0,0,0,0.28);
+  --card-shadow-lg: 0 16px 48px rgba(0,0,0,0.36);
 }
 
-function LoadingSpinner({ style }) {
-  return <div className="loading-spinner" style={style} />;
+/* ===== THEME: LIGHT ===== */
+:root[data-theme="light"] {
+  --bg: #f0f4fb;
+  --bg2: #e8eef9;
+  --surface: #ffffff;
+  --surface2: #f8faff;
+  --glass: rgba(255,255,255,0.95);
+  --glass2: rgba(37,99,235,0.04);
+  --glass3: rgba(37,99,235,0.08);
+  --border: rgba(37,99,235,0.10);
+  --border2: rgba(37,99,235,0.16);
+  --border-blue: rgba(37,99,235,0.28);
+  --border-blue2: rgba(37,99,235,0.5);
+  --blue: #2563eb;
+  --blue2: #1d4ed8;
+  --blue-glow: rgba(37,99,235,0.22);
+  --blue-soft: rgba(37,99,235,0.08);
+  --cyan: #0284c7;
+  --cyan-soft: rgba(2,132,199,0.09);
+  --green: #059669;
+  --green-glow: rgba(5,150,105,0.22);
+  --green-soft: rgba(5,150,105,0.09);
+  --amber: #d97706;
+  --amber-soft: rgba(217,119,6,0.10);
+  --red: #dc2626;
+  --red-soft: rgba(220,38,38,0.09);
+  --text: #0f172a;
+  --text-2: #334155;
+  --text-3: #64748b;
+  --text-4: #94a3b8;
+  --qris-bg: #ffffff;
+  --card-shadow: 0 4px 24px rgba(37,99,235,0.08);
+  --card-shadow-lg: 0 8px 40px rgba(37,99,235,0.14);
 }
 
-const SvgProduct = () => (
-  <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
-    <rect x="5" y="2" width="14" height="20" rx="3" fill="currentColor" fillOpacity="0.15"/>
-    <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-  </svg>
-);
-const SvgPPOB = () => (
-  <svg viewBox="0 0 24 24" fill="none" width="26" height="26">
-    <rect x="2" y="6" width="20" height="12" rx="4" fill="currentColor" fillOpacity="0.15"/>
-    <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 12h4m-2-2v4m8-2h.01M16 10h.01"/>
-  </svg>
-);
-const SvgTopUp = () => (
-  <svg viewBox="0 0 24 24" fill="none" width="26" height="26">
-    <rect x="3" y="6" width="18" height="12" rx="2" fill="currentColor" fillOpacity="0.15"/>
-    <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 14h3M3 8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
-  </svg>
-);
-const SvgProfile = () => (
-  <svg viewBox="0 0 24 24" fill="none" width="26" height="26">
-    <circle cx="12" cy="8" r="4" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="2"/>
-    <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
-  </svg>
-);
-const SvgSun = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20" height="20"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-);
-const SvgMoon = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20" height="20"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-);
-const SvgActivity = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20" height="20">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const IconCheck = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
-);
-const IconCross = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
-);
-const IconWarning = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-);
-const IconClock = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-);
-
-export default function Page() {
-  const [theme, setTheme] = useState('dark');
-  const [step, setStep] = useState('init');
-  const [email, setEmail] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [pwInput, setPwInput] = useState('');
-  const [newPass, setNewPass] = useState('');
-  const [confirmPass, setConfirmPass] = useState('');
-  const [setupUser, setSetupUser] = useState('');
-  const [resetToken, setResetToken] = useState('');
-  const [countdown, setCountdown] = useState(0);
-  const [otpMode, setOtpMode] = useState('register'); 
-  const timerRef = useRef(null);
-
-  const [user, setUser] = useState(null);
-  const [balance, setBalance] = useState(0);
-  const [hasPassword, setHasPassword] = useState(false);
-  const [username, setUsername] = useState('');
-  const [tab, setTab] = useState('virtual');
-
-  const [services, setServices] = useState([]);
-  const [query, setQuery] = useState('');
-  const [countryQuery, setCountryQuery] = useState('');
-
-  const [selectedSvc, setSelectedSvc] = useState(null);
-  const [countries, setCountries] = useState([]);
-  const [loadingCountries, setLoadingCountries] = useState(false);
-  const [showSheet, setShowSheet] = useState(false);
-
-  const [expandedCountry, setExpandedCountry] = useState(null);
-  const [orderingProv, setOrderingProv] = useState(null);
-
-  const [showOperatorModal, setShowOperatorModal] = useState(false);
-  const [operators, setOperators] = useState([]);
-  const [selectedOrderContext, setSelectedOrderContext] = useState(null);
-
-  const [order, setOrder] = useState(null);
-  const [orderExpiry, setOrderExpiry] = useState(0);
-  const [cancelCooldown, setCancelCooldown] = useState(0);
-  const [cancelingOrder, setCancelingOrder] = useState(false);
-
-  const [depositAmount, setDepositAmount] = useState('');
-  const [qrisData, setQrisData] = useState(null);
-  const [creatingQris, setCreatingQris] = useState(false);
-  const [cancelingDeposit, setCancelingDeposit] = useState(false);
-
-  const [curPass, setCurPass] = useState('');
-  const [profileNewPass, setProfileNewPass] = useState('');
-  const [profileConfirmPass, setProfileConfirmPass] = useState('');
-  const [showCurPass, setShowCurPass] = useState(false);
-  const [showNewPass, setShowNewPass] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [savingPass, setSavingPass] = useState(false);
-
-  const [busy, setBusy] = useState(false);
-  const [showPw, setShowPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
-  const [showConfPw, setShowConfPw] = useState(false);
-
-  const [ppobItems, setPpobItems] = useState([]);
-  const [ppobError, setPpobError] = useState('');
-  const [ppobQuery, setPpobQuery] = useState('');
-  const [ppobLoading, setPpobLoading] = useState(false);
-
-  const [loadingSvcs, setLoadingSvcs] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [loadingOperators, setLoadingOperators] = useState(false);
-
-  const [historyItems, setHistoryItems] = useState([]);
-  const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
-  const [depositCountdown, setDepositCountdown] = useState(0);
-  const [qrisCountdown, setQrisCountdown] = useState(0);
-
-  const [toast, setToast] = useState(null);
-  const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
-  const [cancelNotif, setCancelNotif] = useState(null);
-
-  const showToast = (type, title, msg) => {
-    setToast({ type, title, msg });
-    setTimeout(() => setToast(null), 3500);
-  };
-
-  const showCancelNotif = (amount, subtitle = 'Transaksi telah dibatalkan') => {
-    setCancelNotif({ amount, subtitle });
-    setTimeout(() => setCancelNotif(null), 2800);
-  };
-
-  const showModal = (type, title, msg, onConfirm = null) => {
-    setModal({ show: true, type, title, msg, onConfirm });
-  };
-  const closeModal = () => setModal(prev => ({ ...prev, show: false }));
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('walz_theme') || 'dark';
-    setTheme(savedTheme);
-    document.documentElement.setAttribute('data-theme', savedTheme);
-  }, []);
-
-  const toggleTheme = () => {
-    const n = theme === 'dark' ? 'light' : 'dark';
-    setTheme(n);
-    localStorage.setItem('walz_theme', n);
-    document.documentElement.setAttribute('data-theme', n);
-  };
-
-  useEffect(() => {
-    api('balance').then(r => {
-      if (r.success) {
-        setUser({ email: r.data.email });
-        setBalance(r.data.balance);
-        setHasPassword(r.data.hasPassword);
-        setUsername(r.data.username || '');
-        setStep('app');
-      } else {
-        setStep('welcome');
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    if (step !== 'app') return;
-    setLoadingSvcs(true);
-    api('services').then(r => {
-      setLoadingSvcs(false);
-      if (r.success && Array.isArray(r.data)) {
-        const base = r.data.map(s => ({ ...s, price: null, stock: null }));
-        setServices(base);
-      }
-    });
-  }, [step]);
-
-  useEffect(() => {
-    if (step !== 'app' || services.length === 0) return;
-    let isSubscribed = true;
-    const loadStocks = async () => {
-      const queue = services.filter(s => s.stock === null);
-      for (let i = 0; i < queue.length; i += 3) {
-        if (!isSubscribed) break;
-        const batch = queue.slice(i, i + 3);
-        await Promise.all(batch.map(async (svc) => {
-          const rc = await api('countries', { service_id: svc.service_code });
-          if (rc.data && Array.isArray(rc.data)) {
-            let totalStock = 0;
-            let minPrice = Infinity;
-            rc.data.forEach(c => {
-              const avail = c.pricelist?.filter(p => p.available) || [];
-              avail.forEach(p => {
-                totalStock += 1;
-                if (p.price < minPrice) minPrice = p.price;
-              });
-            });
-            setServices(prev => prev.map(s => 
-              s.service_code === svc.service_code 
-              ? { ...s, stock: totalStock, price: minPrice === Infinity ? null : minPrice } 
-              : s
-            ));
-          } else {
-            setServices(prev => prev.map(s => s.service_code === svc.service_code ? { ...s, stock: 0 } : s));
-          }
-        }));
-        await new Promise(res => setTimeout(res, 600));
-      }
-    };
-    loadStocks();
-    return () => { isSubscribed = false; };
-  }, [step, services.length]);
-
-  useEffect(() => {
-    if (countdown <= 0) { clearInterval(timerRef.current); return; }
-    timerRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) { clearInterval(timerRef.current); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, [countdown]);
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setOrderExpiry(prev => prev > 0 ? prev - 1 : 0);
-      setCancelCooldown(prev => prev > 0 ? prev - 1 : 0);
-    }, 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const fetchHistory = async (showLoader = false) => {
-    if (showLoader) setLoadingHistory(true);
-    const r = await api('history');
-    if (showLoader) setLoadingHistory(false);
-    if (r.success && Array.isArray(r.data)) {
-      setHistoryItems(r.data);
-    }
-  };
-
-  // Realtime countdown for pending deposit expiry
-  useEffect(() => {
-    if (!selectedHistoryItem || selectedHistoryItem.itemType !== 'deposit' ||
-        (selectedHistoryItem.status !== 'pending' && selectedHistoryItem.status !== 'waiting')) {
-      setDepositCountdown(0);
-      return;
-    }
-    const expiredAt = selectedHistoryItem.expired_at
-      ? Number(selectedHistoryItem.expired_at)
-      : Number(selectedHistoryItem.timestamp) + 20 * 60 * 1000;
-    const update = () => setDepositCountdown(Math.max(0, Math.floor((expiredAt - Date.now()) / 1000)));
-    update();
-    const t = setInterval(update, 1000);
-    return () => clearInterval(t);
-  }, [selectedHistoryItem?.id, selectedHistoryItem?.status]);
-
-  // Realtime countdown for active QRIS on deposit tab
-  useEffect(() => {
-    if (!qrisData?.expired_at) { setQrisCountdown(0); return; }
-    const update = () => setQrisCountdown(Math.max(0, Math.floor((Number(qrisData.expired_at) - Date.now()) / 1000)));
-    update();
-    const t = setInterval(update, 1000);
-    return () => clearInterval(t);
-  }, [qrisData?.id]);
-
-  const downloadQrisImage = async (imageUrl) => {
-    try {
-      const res = await fetch(imageUrl);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `qris-payment-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-      showToast('success', 'Berhasil', 'Gambar QRIS berhasil diunduh');
-    } catch {
-      window.open(imageUrl, '_blank');
-    }
-  };
-
-  useEffect(() => {
-    let interval;
-    if (tab === 'activity') {
-      fetchHistory(false);
-      interval = setInterval(() => fetchHistory(false), 5000);
-    }
-    return () => clearInterval(interval);
-  }, [tab]);
-
-  useEffect(() => {
-    if (selectedHistoryItem) {
-      const updated = historyItems.find(h => h.id === selectedHistoryItem.id);
-      if (updated && updated.status !== selectedHistoryItem.status) {
-        setSelectedHistoryItem(updated);
-        api('balance').then(res => res.success && setBalance(res.data.balance));
-      }
-    }
-  }, [historyItems]);
-
-  // Polling deposit realtime di background untuk receipt aktif
-  useEffect(() => {
-    let interval;
-    if (selectedHistoryItem && selectedHistoryItem.itemType === 'deposit' && (selectedHistoryItem.status === 'pending' || selectedHistoryItem.status === 'waiting')) {
-      interval = setInterval(async () => {
-        try {
-          const r = await api('deposit_status', { deposit_id: selectedHistoryItem.id });
-          const newStatus = r.status || r.data?.status;
-          if (r.success && (newStatus === 'paid' || newStatus === 'success' || newStatus === 'completed')) {
-            fetchHistory();
-            api('balance').then(res => res.success && setBalance(res.data.balance));
-            showToast('success', 'Berhasil', 'Pembayaran telah diterima!');
-          } else if (r.success && (newStatus === 'cancel' || newStatus === 'canceled')) {
-            fetchHistory();
-          }
-        } catch (error) {}
-      }, 3000);
-    }
-    return () => clearInterval(interval);
-  }, [selectedHistoryItem]);
-
-  // Polling deposit realtime untuk QRIS aktif
-  useEffect(() => {
-    let interval;
-    if (qrisData) {
-      interval = setInterval(async () => {
-        try {
-          const r = await api('deposit_status', { deposit_id: qrisData.id });
-          const newStatus = r.status || r.data?.status;
-          if (r.success && (newStatus === 'paid' || newStatus === 'success' || newStatus === 'completed')) {
-            setBalance(r.new_balance || r.data?.balance || balance);
-            setQrisData(null);
-            setDepositAmount('');
-            showToast('success', 'Berhasil', 'Deposit berhasil masuk!');
-            api('balance').then(res => res.success && setBalance(res.data.balance));
-          }
-        } catch (error) {}
-      }, 3000);
-    }
-    return () => clearInterval(interval);
-  }, [qrisData]);
-
-  useEffect(() => {
-    let interval;
-    if (order && !order.otp_code) {
-      interval = setInterval(async () => {
-        try {
-          const r = await api('order_status', { order_id: order.order_id });
-          if (r.success && r.data?.otp_code) {
-            setOrder(prev => ({ ...prev, otp_code: r.data.otp_code, otp_msg: r.data.otp_msg }));
-            showToast('success', 'SMS Masuk!', 'Kode OTP berhasil diterima.');
-            api('balance').then(res => res.success && setBalance(res.data.balance));
-          } else if (r.success && r.data?.status === 'cancel') {
-             setOrder(null);
-             showToast('warning', 'Dibatalkan', 'Pesanan telah dibatalkan.');
-          }
-        } catch (error) {}
-      }, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [order]);
-
-  useEffect(() => {
-    if (!showSheet) { 
-      setExpandedCountry(null); 
-      setCountries([]); 
-      setCountryQuery(''); 
-    }
-  }, [showSheet]);
-
-  const fetchPpob = async () => {
-    setPpobError('');
-    setPpobLoading(true);
-    const r = await api('h2h_products');
-    setPpobLoading(false);
-    if (r.success && Array.isArray(r.data)) {
-      setPpobItems(r.data);
-    } else {
-      setPpobError(r.msg || 'Sistem Sedang Maintenance');
-    }
-  };
-
-  useEffect(() => {
-    if (tab === 'ppob' && ppobItems.length === 0 && !ppobError) {
-      fetchPpob();
-    }
-  }, [tab]);
-
-  const startCountdown = () => {
-    clearInterval(timerRef.current);
-    setCountdown(OTP_DURATION);
-  };
-
-  const handleForgotCheck = async () => {
-    if (!email) {
-      showToast('warning', 'Perhatian', 'Harap masukkan alamat email terlebih dahulu.');
-      return;
-    }
-    setBusy(true);
-    try {
-      const check = await api('check_email', { email });
-      if (!check.exists) {
-        setBusy(false);
-        showToast('error', 'Belum Terdaftar', 'Email ini belum terdaftar di sistem kami.');
-        return;
-      }
-      sendOtp(email, 'reset');
-    } catch (e) {
-      setBusy(false);
-      showToast('error', 'Error', 'Gagal memproses permintaan.');
-    }
-  };
-
-  const sendOtp = async (targetEmail, mode = 'register') => {
-    if (!targetEmail) return;
-    setBusy(true);
-    try {
-      const r = await authApi('request-otp', { email: targetEmail });
-      setBusy(false);
-      if (r.success) {
-        setOtpMode(mode);
-        setOtpCode('');
-        setStep(mode === 'reset' ? 'forgot_otp' : 'register_otp');
-        startCountdown();
-      } else {
-        showToast('error', 'Gagal', r.msg || 'Gagal mengirim OTP ke email kamu.');
-      }
-    } catch (e) {
-      setBusy(false);
-      showToast('error', 'Error', 'Gagal terhubung ke server.');
-    }
-  };
-
-  const verifyOtp = async () => {
-    if (otpCode.length !== 6) return;
-    setBusy(true);
-    try {
-      const r = await authApi('verify-otp', { email, code: otpCode, mode: otpMode });
-      setBusy(false);
-      if (r.success) {
-        if (otpMode === 'reset') {
-          setResetToken(r.resetToken);
-          setNewPass(''); setConfirmPass('');
-          setStep('reset_pw');
-        } else {
-          if (r.needsSetup) {
-            setStep('register_setup');
-          } else {
-            setUser(r.user);
-            setBalance(r.user.balance);
-            setUsername(r.user.username);
-            setHasPassword(true);
-            setStep('app');
-          }
-        }
-      } else {
-        showToast('error', 'Verifikasi Gagal', r.msg || 'Kode OTP salah atau sudah expired.');
-      }
-    } catch(e) {
-      setBusy(false);
-      showToast('error', 'Error', 'Kesalahan koneksi verifikasi OTP.');
-    }
-  };
-
-  const completeSetup = async () => {
-    if (newPass.length < 6 || newPass !== confirmPass || !setupUser) return;
-    setBusy(true);
-    try {
-      const r = await authApi('set-password', { newPassword: newPass, setupMode: true, username: setupUser });
-      setBusy(false);
-      if (r.success) {
-        api('balance').then(res => {
-          if (res.success) {
-            setUser({ email: res.data.email });
-            setBalance(res.data.balance);
-            setUsername(res.data.username);
-            setHasPassword(true);
-            setStep('app');
-          }
-        });
-      } else {
-        showToast('error', 'Gagal', r.msg || 'Gagal menyimpan pengaturan profil.');
-      }
-    } catch(e) {
-      setBusy(false);
-      showToast('error', 'Error', 'Terjadi kesalahan sistem.');
-    }
-  };
-
-  const loginWithPassword = async () => {
-    if (!email || !pwInput) return;
-    setBusy(true);
-    try {
-      const r = await authApi('login-password', { email, password: pwInput });
-      setBusy(false);
-      if (r.success) {
-        setUser(r.user);
-        setBalance(r.user.balance);
-        setUsername(r.user.username);
-        setHasPassword(true);
-        setStep('app');
-      } else {
-        if (r.msg.toLowerCase().includes('belum terdaftar')) {
-          showToast('error', 'Belum Terdaftar', r.msg);
-        } else {
-          showToast('error', 'Login Gagal', r.msg);
-        }
-      }
-    } catch (e) {
-      setBusy(false);
-      showToast('error', 'Error Sistem', 'Gagal terhubung ke server saat login.');
-    }
-  };
-
-  const resetPassword = async () => {
-    if (newPass.length < 6 || newPass !== confirmPass) return;
-    setBusy(true);
-    try {
-      const r = await authApi('reset-password', { resetToken, newPassword: newPass });
-      setBusy(false);
-      if (r.success) {
-        setUser(r.user);
-        setBalance(r.user.balance);
-        setUsername(r.user.username);
-        setHasPassword(true);
-        setStep('app');
-        showToast('success', 'Berhasil', 'Password baru berhasil disimpan.');
-      } else {
-        showToast('error', 'Gagal', r.msg || 'Proses reset password gagal, coba lagi nanti.');
-      }
-    } catch (e) {
-       setBusy(false);
-       showToast('error', 'Error', 'Gagal melakukan reset password.');
-    }
-  };
-
-  const logout = async () => {
-    await api('logout');
-    setUser(null); setBalance(0); setStep('welcome');
-    setEmail(''); setOtpCode(''); setPwInput(''); setOrder(null); setServices([]);
-  };
-
-  const openService = async svc => {
-    setSelectedSvc(svc);
-    setShowSheet(true);
-    setLoadingCountries(true);
-    const r = await api('countries', { service_id: svc.service_code });
-    setLoadingCountries(false);
-    if (r.success && Array.isArray(r.data)) {
-      const filtered = r.data
-        .map(c => ({
-          ...c,
-          available: c.pricelist?.filter(p => p.available) || [],
-        }))
-        .filter(c => c.available.length > 0)
-        .sort((a, b) => {
-          const ai = a.name?.toLowerCase().includes('indonesia') ? 0 : 1;
-          const bi = b.name?.toLowerCase().includes('indonesia') ? 0 : 1;
-          return ai - bi || a.available[0].price - b.available[0].price;
-        });
-      setCountries(filtered);
-    }
-  };
-
-  const handleOrderClick = async (country, provider) => {
-    setSelectedOrderContext({ country, provider });
-    setShowOperatorModal(true);
-    setOperators([]);
-    setLoadingOperators(true);
-    try {
-      const r = await api('operators', { country: country.name, provider_id: provider.provider_id });
-      setLoadingOperators(false);
-      if (r.success && Array.isArray(r.data) && r.data.length > 0) {
-        const seen = new Set();
-        const deduped = r.data.filter(op => {
-          const key = op.name?.toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        setOperators(deduped);
-      } else {
-        setOperators([{ id: 'any', name: 'any' }]);
-      }
-    } catch (e) {
-      setLoadingOperators(false);
-      setOperators([{ id: 'any', name: 'any' }]);
-    }
-  };
-
-  const confirmOrder = async (operatorObj) => {
-    const operatorName = operatorObj.name;
-    setShowOperatorModal(false);
-    setOrderingProv(selectedOrderContext.provider.provider_id);
-    showToast('info', 'Memproses', 'Membuat pesanan...');
-
-    try {
-      const r = await api('order_create', {
-        number_id: selectedOrderContext.country.number_id,
-        provider_id: selectedOrderContext.provider.provider_id,
-        service_id: selectedSvc.service_code,
-        service_name: selectedSvc.service_name,
-        service_img: selectedSvc.service_img,
-        operator_id: operatorName
-      });
-      setOrderingProv(null);
-      if (r.success) {
-        setOrder({ ...r.data, service_name: selectedSvc.service_name, service_img: selectedSvc.service_img, operator: operatorName, country: selectedOrderContext.country.name });
-        setOrderExpiry(1200); 
-        setCancelCooldown(180);
-        setShowSheet(false);
-        api('balance').then(res => res.success && setBalance(res.data.balance));
-      } else {
-        const isInsufficient =
-          r.error_code === 'INSUFFICIENT_BALANCE' ||
-          (r.msg && r.msg.toLowerCase().includes('tidak cukup'));
-        if (isInsufficient) {
-          setShowSheet(false);
-          const required = r.required ? Number(r.required) : null;
-          const kekurangan = required ? Math.max(0, required - balance) : null;
-          const detailMsg = kekurangan && kekurangan > 0
-            ? `Saldo kamu ${fmt(balance)}, butuh ${fmt(required)}. Kekurangan ${fmt(kekurangan)}. Top up sekarang yuk! 💸`
-            : 'Saldo kamu kurang untuk membeli nomor ini. Yuk top up dulu agar bisa bertransaksi dengan lancar.';
-          showModal('warning', 'Saldo Tidak Cukup! 💸', detailMsg, () => setTab('deposit'));
-        } else {
-          showToast('error', 'Pesanan Gagal', r.msg || 'Stock penyedia habis, tunggu beberapa saat.');
-        }
-      }
-    } catch(e) {
-      setOrderingProv(null);
-      showToast('error', 'Error', 'Koneksi ke server gagal.');
-    }
-  };
-
-  const cancelOrder = async () => {
-    if (!order) return;
-    const orderPrice = order.price;
-    setCancelingOrder(true);
-    const r = await api('order_cancel', { order_id: order.order_id });
-    setCancelingOrder(false);
-    if (r.success) {
-      setOrder(null);
-      showCancelNotif(orderPrice, 'Saldo telah dikembalikan ke akun kamu');
-      api('balance').then(res => res.success && setBalance(res.data.balance));
-    } else {
-      showToast('error', 'Gagal Batal', r.msg || 'Terjadi kesalahan saat membatalkan.');
-    }
-  };
-
-  const cancelHistoryOrder = async (orderId, orderPrice) => {
-    setBusy(true);
-    const r = await api('order_cancel', { order_id: orderId });
-    setBusy(false);
-    if(r.success) {
-      setSelectedHistoryItem(null);
-      showCancelNotif(orderPrice, 'Saldo telah dikembalikan ke akun kamu');
-      fetchHistory();
-      api('balance').then(res => res.success && setBalance(res.data.balance));
-    } else {
-      showToast('error', 'Gagal Batal', r.msg || 'Terjadi kesalahan saat membatalkan.');
-    }
-  };
-
-  const createQris = async () => {
-    if (!depositAmount || Number(depositAmount) <= 0) return;
-    setCreatingQris(true);
-    try {
-      const r = await api('deposit_create', { amount: Number(depositAmount) });
-      setCreatingQris(false);
-      if (r.success && r.data) {
-        const totalAmt = Number(r.data.total || r.data.amount || depositAmount);
-        const creditAmt = Number(r.data.diterima || r.data.amount || depositAmount);
-        const feeAmt = Number(r.data.fee || (totalAmt - creditAmt) || 0);
-        const expiredAt = r.data.expired_at
-          ? (isNaN(Number(r.data.expired_at)) ? new Date(r.data.expired_at).getTime() : Number(r.data.expired_at))
-          : Date.now() + 20 * 60 * 1000;
-        setQrisData({ ...r.data, actual_amount: totalAmt, credit_amount: creditAmt, fee_amount: feeAmt, expired_at: expiredAt });
-      } else {
-        showToast('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
-      }
-    } catch (e) {
-      setCreatingQris(false);
-      showToast('error', 'Error', 'Terjadi kesalahan jaringan.');
-    }
-  };
-
-  const checkHistoryDeposit = async (depId) => {
-    setBusy(true);
-    const r = await api('deposit_status', { deposit_id: depId });
-    setBusy(false);
-    if(r.success && (r.status === 'paid' || r.data?.status === 'paid' || r.data?.status === 'success' || r.status === 'success')) {
-      showToast('success', 'Berhasil', 'Pembayaran telah diterima.');
-      fetchHistory();
-      api('balance').then(res => res.success && setBalance(res.data.balance));
-    } else {
-      showToast('warning', 'Pending', 'Pembayaran belum masuk.');
-    }
-  };
-
-  const cancelHistoryDeposit = async (depId, depAmount) => {
-    setBusy(true);
-    const r = await api('deposit_cancel', { deposit_id: depId });
-    setBusy(false);
-    if(r.success) {
-      setSelectedHistoryItem(null);
-      showCancelNotif(depAmount, 'Deposit telah dibatalkan');
-      fetchHistory();
-    } else {
-      showToast('error', 'Gagal Batal', 'Gagal membatalkan transaksi.');
-    }
-  };
-
-  const checkQrisPayment = async () => {
-    if (!qrisData?.id) return;
-    setBusy(true);
-    const r = await api('deposit_status', { deposit_id: qrisData.id });
-    setBusy(false);
-    const paid = r.success && (r.status === 'paid' || r.data?.status === 'paid' || r.data?.status === 'success' || r.status === 'success');
-    if (paid) {
-      setBalance(r.new_balance || balance);
-      setQrisData(null);
-      setDepositAmount('');
-      showToast('success', 'Berhasil', 'Deposit berhasil masuk!');
-      api('balance').then(res => res.success && setBalance(res.data.balance));
-      fetchHistory();
-    } else {
-      showToast('warning', 'Belum Masuk', 'Pembayaran belum terdeteksi. Pastikan sudah transfer.');
-    }
-  };
-
-  const saveProfile = async () => {
-    setSavingProfile(true);
-    const r = await api('profile_update', { username });
-    setSavingProfile(false);
-    if (r.success) {
-      showToast('success', 'Berhasil', r.msg);
-    } else {
-      showToast('error', 'Gagal', r.msg);
-    }
-  };
-
-  const savePassword = async () => {
-    if (profileNewPass.length < 6 || profileNewPass !== profileConfirmPass) return;
-    setSavingPass(true);
-    const r = await authApi('set-password', { currentPassword: curPass || undefined, newPassword: profileNewPass });
-    setSavingPass(false);
-    if (r.success) {
-      setHasPassword(true);
-      setCurPass(''); setProfileNewPass(''); setProfileConfirmPass('');
-      showToast('success', 'Berhasil', r.msg || 'Password berhasil disimpan');
-    } else {
-      showToast('error', 'Gagal', r.msg);
-    }
-  };
-
-  const filteredSvcs = useMemo(() => {
-    return services.filter(s => s.service_name?.toLowerCase().includes(query.toLowerCase()));
-  }, [services, query]);
-
-  const filteredCountries = useMemo(() => {
-    return countries.filter(c => c.name?.toLowerCase().includes(countryQuery.toLowerCase()));
-  }, [countries, countryQuery]);
-
-  const filteredPpob = useMemo(() => {
-    return ppobItems.filter(p => p.name?.toLowerCase().includes(ppobQuery.toLowerCase()) || p.brand?.toLowerCase().includes(ppobQuery.toLowerCase()));
-  }, [ppobItems, ppobQuery]);
-
-  if (step === 'init') {
-    return (
-      <div className="auth-screen">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (step === 'welcome') {
-    return (
-      <div className="auth-screen welcome-bg">
-        <div className="welcome-wrapper floating">
-          <div className="auth-logo-badge"><div className="auth-logo-dot" /><span>SISTEM ONLINE</span></div>
-          <h1 className="logo-title">WALZ<br/><span className="text-cyan">NEXUS</span></h1>
-          <p className="logo-subtitle">LAYANAN DIGITAL PREMIUM</p>
-        </div>
-
-        <div className="welcome-card">
-          <button className="btn btn-primary" onClick={() => setStep('register')} style={{ height: 60, fontSize: '1.05rem', borderRadius: 'var(--r-full)' }}>
-            📝 Buat Akun Baru
-          </button>
-          <button className="btn btn-secondary" onClick={() => setStep('login')} style={{ height: 60, fontSize: '1.05rem', marginBottom: 0, borderRadius: 'var(--r-full)' }}>
-            🔑 Masuk ke Akun
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'login') {
-    return (
-      <div className="auth-screen welcome-bg">
-        <div className="toast-container">
-          {toast && (
-            <div className="toast">
-              <div className={`toast-icon ${toast.type}`}>
-                {toast.type === 'error' && <IconCross />}
-                {toast.type === 'success' && <IconCheck />}
-                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
-                {toast.type === 'warning' && <IconWarning />}
-              </div>
-              <div className="toast-content">
-                <div className="toast-title">{toast.title}</div>
-                <div className="toast-msg">{toast.msg}</div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
-        <div className="auth-card">
-          <div className="auth-card-title">Login Kembali 👋</div>
-          <div className="auth-card-sub">Masukkan email dan password akun kamu</div>
-          <div className="input-field">
-            <label>Alamat Email</label>
-            <input type="email" value={email} placeholder="nama@email.com" onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div className="input-field">
-            <label>Password</label>
-            <div className="input-icon-wrap">
-              <input type={showPw ? 'text' : 'password'} value={pwInput} placeholder="••••••••"
-                onChange={e => setPwInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !busy && email && pwInput && loginWithPassword()} />
-              <EyeToggle show={showPw} onToggle={() => setShowPw(v => !v)} />
-            </div>
-          </div>
-          <button className="btn btn-primary" onClick={loginWithPassword} disabled={!email || !pwInput || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
-            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Memproses...</> : '🔑 Masuk Sekarang'}
-          </button>
-          <button className="btn-ghost" onClick={() => setStep('forgot')} style={{ color: 'var(--blue2)', marginBottom: 8 }}>
-            Lupa Password?
-          </button>
-          <button className="btn-ghost" onClick={() => { setStep('welcome'); setEmail(''); setPwInput(''); }}>
-            ← Kembali
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'register') {
-    return (
-      <div className="auth-screen welcome-bg">
-        <div className="toast-container">
-          {toast && (
-            <div className="toast">
-              <div className={`toast-icon ${toast.type}`}>
-                {toast.type === 'error' && <IconCross />}
-                {toast.type === 'success' && <IconCheck />}
-                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
-                {toast.type === 'warning' && <IconWarning />}
-              </div>
-              <div className="toast-content">
-                <div className="toast-title">{toast.title}</div>
-                <div className="toast-msg">{toast.msg}</div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
-        <div className="auth-card">
-          <div className="auth-card-title">Daftar Akun Baru 🚀</div>
-          <div className="auth-card-sub">Masukkan email aktif untuk menerima kode verifikasi</div>
-          <div className="input-field">
-            <label>Alamat Email</label>
-            <input type="email" value={email} placeholder="nama@email.com"
-              onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !busy && email && sendOtp(email, 'register')} />
-          </div>
-          <button className="btn btn-primary" onClick={() => sendOtp(email, 'register')} disabled={!email || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
-            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Mengirim...</> : '✉️ Kirim Kode OTP'}
-          </button>
-          <button className="btn-ghost" onClick={() => { setStep('welcome'); setEmail(''); }}>
-            ← Batal
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'register_otp' || step === 'forgot_otp') {
-    const isReset = step === 'forgot_otp';
-    const timerClass = countdown > 60 ? '' : countdown > 0 ? 'warning' : 'expired';
-    return (
-      <div className="auth-screen welcome-bg">
-        <div className="toast-container">
-          {toast && (
-            <div className="toast">
-              <div className={`toast-icon ${toast.type}`}>
-                {toast.type === 'error' && <IconCross />}
-                {toast.type === 'success' && <IconCheck />}
-                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
-                {toast.type === 'warning' && <IconWarning />}
-              </div>
-              <div className="toast-content">
-                <div className="toast-title">{toast.title}</div>
-                <div className="toast-msg">{toast.msg}</div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
-        <div className="auth-card">
-          <div className="auth-card-title">Verifikasi OTP 📬</div>
-          <div className="otp-info">Kode dikirim ke <strong>{email}</strong></div>
-          <div className={`timer-bar ${timerClass}`}>
-            <span className="timer-label">{countdown > 0 ? 'Kode berlaku' : 'Kode expired'}</span>
-            <span className={`timer-time ${timerClass}`}>{countdown > 0 ? formatTime(countdown) : '00:00'}</span>
-          </div>
-          <div className="input-field">
-            <label>Kode OTP (6 digit)</label>
-            <input type="text" inputMode="numeric" maxLength={6} value={otpCode} placeholder="••••••"
-              style={{ fontSize: '1.5rem', letterSpacing: '0.3em', textAlign: 'center' }}
-              onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
-              onKeyDown={e => e.key === 'Enter' && otpCode.length === 6 && !busy && verifyOtp()}
-              disabled={countdown === 0} />
-          </div>
-          <button className="btn btn-primary" onClick={verifyOtp} disabled={otpCode.length !== 6 || busy || countdown === 0} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Verifikasi...</> : '✅ Verifikasi OTP'}
-          </button>
-          <button className="btn btn-secondary" onClick={() => sendOtp(email, isReset ? 'reset' : 'register')} disabled={busy || countdown > 0} style={{ borderRadius: 'var(--r-full)' }}>
-            {countdown > 0 ? `Kirim Ulang (${formatTime(countdown)})` : '🔄 Kirim Ulang OTP'}
-          </button>
-          <button className="btn-ghost" onClick={() => { setStep(isReset ? 'forgot' : 'register'); setOtpCode(''); }}>
-            ← Ganti Email
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'register_setup') {
-    const isMatch = newPass === confirmPass;
-    const isValid = setupUser.length > 2 && newPass.length >= 6 && isMatch;
-    return (
-      <div className="auth-screen welcome-bg">
-        <div className="toast-container">
-          {toast && (
-            <div className="toast">
-              <div className={`toast-icon ${toast.type}`}>
-                {toast.type === 'error' && <IconCross />}
-                {toast.type === 'success' && <IconCheck />}
-                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
-                {toast.type === 'warning' && <IconWarning />}
-              </div>
-              <div className="toast-content">
-                <div className="toast-title">{toast.title}</div>
-                <div className="toast-msg">{toast.msg}</div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
-        <div className="auth-card">
-          <div className="auth-card-title">Lengkapi Profil ✍️</div>
-          <div className="auth-card-sub">Buat username unik dan password agar kedepannya bisa langsung login tanpa OTP.</div>
-          <div className="input-field">
-            <label>Username</label>
-            <input type="text" value={setupUser} placeholder="Nama unik tanpa spasi" onChange={e => setSetupUser(e.target.value.replace(/\s/g, ''))} />
-          </div>
-          <div className="input-field">
-            <label>Password Baru</label>
-            <div className="input-icon-wrap">
-              <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => setNewPass(e.target.value)} />
-              <EyeToggle show={showNewPw} onToggle={() => setShowNewPw(v => !v)} />
-            </div>
-          </div>
-          <div className="input-field">
-            <label>Konfirmasi Password</label>
-            <div className="input-icon-wrap">
-              <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => setConfirmPass(e.target.value)} />
-              <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
-            </div>
-          </div>
-          {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
-          {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
-          <button className="btn btn-primary" onClick={completeSetup} disabled={!isValid || busy} style={{ height: 54, borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Menyimpan...</> : '🚀 Mulai Gunakan Aplikasi'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'forgot') {
-    return (
-      <div className="auth-screen welcome-bg">
-        <div className="toast-container">
-          {toast && (
-            <div className="toast">
-              <div className={`toast-icon ${toast.type}`}>
-                {toast.type === 'error' && <IconCross />}
-                {toast.type === 'success' && <IconCheck />}
-                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
-                {toast.type === 'warning' && <IconWarning />}
-              </div>
-              <div className="toast-content">
-                <div className="toast-title">{toast.title}</div>
-                <div className="toast-msg">{toast.msg}</div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
-        <div className="auth-card">
-          <div className="auth-card-title">Lupa Password 🔒</div>
-          <div className="auth-card-sub">Masukkan email akun kamu yang pernah terdaftar untuk reset password.</div>
-          <div className="input-field">
-            <label>Email Terdaftar</label>
-            <input type="email" value={email} placeholder="nama@email.com" onChange={e => setEmail(e.target.value)} />
-          </div>
-          <button className="btn btn-primary" onClick={handleForgotCheck} disabled={!email || busy} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Memeriksa...</> : '📩 Lanjutkan'}
-          </button>
-          <button className="btn-ghost" onClick={() => setStep('login')}>
-            ← Batal
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'reset_pw') {
-    const isMatch = newPass === confirmPass;
-    const isValid = newPass.length >= 6 && isMatch;
-    return (
-      <div className="auth-screen welcome-bg">
-        <div className="toast-container">
-          {toast && (
-            <div className="toast">
-              <div className={`toast-icon ${toast.type}`}>
-                {toast.type === 'error' && <IconCross />}
-                {toast.type === 'success' && <IconCheck />}
-                {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
-                {toast.type === 'warning' && <IconWarning />}
-              </div>
-              <div className="toast-content">
-                <div className="toast-title">{toast.title}</div>
-                <div className="toast-msg">{toast.msg}</div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
-        <div className="auth-card">
-          <div className="auth-card-title">Password Baru 🔐</div>
-          <div className="auth-card-sub">Buat password baru untuk akun kamu</div>
-          <div className="input-field">
-            <label>Password Baru</label>
-            <div className="input-icon-wrap">
-              <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => setNewPass(e.target.value)} />
-              <EyeToggle show={showNewPw} onToggle={() => setShowNewPw(v => !v)} />
-            </div>
-          </div>
-          <div className="input-field">
-            <label>Konfirmasi Password</label>
-            <div className="input-icon-wrap">
-              <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => setConfirmPass(e.target.value)} />
-              <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
-            </div>
-          </div>
-          {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
-          {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
-          <button className="btn btn-primary" onClick={resetPassword} disabled={!isValid || busy} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner style={{width:18, height:18}} /> Menyimpan...</> : '💾 Simpan Password'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {/* Cancel Notification Overlay */}
-      {cancelNotif && (
-        <div className="cancel-notif-overlay" onClick={() => setCancelNotif(null)}>
-          <div className="cancel-notif-card">
-            <div className="cancel-notif-ripple" />
-            <div className="cancel-notif-ripple delay" />
-            <div className="cancel-notif-icon">
-              <IconCross />
-            </div>
-            <div className="cancel-notif-title">Transaksi Dibatalkan</div>
-            <div className="cancel-notif-subtitle">{cancelNotif.subtitle}</div>
-            {cancelNotif.amount > 0 && (
-              <div className="cancel-notif-amount">{fmt(cancelNotif.amount)}</div>
-            )}
-          </div>
-        </div>
-      )}
-      <div className="toast-container">
-        {toast && (
-          <div className="toast">
-            <div className={`toast-icon ${toast.type}`}>
-              {toast.type === 'error' && <IconCross />}
-              {toast.type === 'success' && <IconCheck />}
-              {toast.type === 'info' && <span style={{fontSize: '18px'}}>ℹ️</span>}
-              {toast.type === 'warning' && <IconWarning />}
-            </div>
-            <div className="toast-content">
-              <div className="toast-title">{toast.title}</div>
-              <div className="toast-msg">{toast.msg}</div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="app-header">
-        <div className="header-row">
-          <div className="header-brand">
-            <div className="header-online"><div className="header-dot" /><span>Online</span></div>
-            <div className="header-title">WALZ<br/><span>NEXUS</span></div>
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="theme-toggle" onClick={() => setTab('activity')} title="Riwayat">
-              <SvgActivity />
-            </button>
-            <button className="theme-toggle" onClick={toggleTheme} title="Ganti Tema">
-              {theme === 'dark' ? <SvgSun /> : <SvgMoon />}
-            </button>
-          </div>
-        </div>
-
-        <div className="balance-card">
-          <div className="balance-bg-shape"></div>
-          <div className="balance-bg-shape2"></div>
-          <div className="balance-content">
-            <div className="balance-left">
-              <div className="balance-label">Total Saldo <span className="balance-badge">Aktif</span></div>
-              <div className="balance-amount">{fmt(balance)}</div>
-              <div className="balance-user">
-                <span className="user-icon">👤</span> {username || user?.email}
-              </div>
-            </div>
-            <div className="balance-right">
-              <button className="btn-topup-new" onClick={() => setTab('deposit')} style={{ whiteSpace: 'nowrap' }}>
-                <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="18"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-                Isi Saldo
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="tab-content">
-        {tab === 'virtual' && !order && (
-          <div style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            <div className="section-header-block">
-              <h2>Layanan Virtual</h2>
-              <span className="count">{services.length} layanan</span>
-            </div>
-            <div className="search-wrap">
-              <span className="search-icon">⌕</span>
-              <input value={query} placeholder="Cari layanan..." onChange={e => setQuery(e.target.value)} />
-            </div>
-            {filteredSvcs.length === 0 && !loadingSvcs ? (
-              <div className="empty-state">
-                <span className="icon">🔍</span>
-                <p>Tidak ada layanan ditemukan</p>
-              </div>
-            ) : (
-              <div className="service-grid">
-                {filteredSvcs.map((s, i) => (
-                  <button key={s.service_code} className="svc-card" style={{ animationDelay: `${(i % 15) * 0.03}s` }} onClick={() => openService(s)}>
-                    <div className="svc-icon-wrap">
-                      <img src={s.service_img} alt={s.service_name} className="svc-icon" onError={e => { e.target.style.display = 'none'; }} />
-                    </div>
-                    <div className="svc-name">{s.service_name}</div>
-                    <div className="svc-price">{s.price ? fmt(s.price) : '...'}</div>
-                    <div className={`svc-stock ${s.stock > 0 ? 'text-green' : s.stock === null ? 'text-muted' : 'text-red'}`}>
-                      {s.stock === null ? '...' : s.stock > 0 ? `${s.stock} total stok` : 'Habis'}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === 'virtual' && order && (
-          <div className="active-order-wrap">
-            <div className="ao-header">
-              <div className="ao-title">Pesanan Pending</div>
-              <button className="ao-refresh" onClick={() => api('balance').then(r => r.success && setBalance(r.data.balance))}>
-                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              </button>
-            </div>
-            <div className="ao-body">
-              <div className="ao-row">
-                 <div className="ao-num-wrap" onClick={() => { navigator.clipboard.writeText(order.phone_number); showToast('success', 'Tersalin', 'Nomor disalin ke clipboard'); }}>
-                    {getFlag(order.country)} {order.phone_number} 
-                    <svg width="18" height="18" fill="none" stroke="var(--text-3)" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                 </div>
-                 <div className="ao-timer">{formatTime(orderExpiry)}</div>
-              </div>
-              <div className="ao-row">
-                 <div className="ao-prov-wrap">
-                    <span style={{ fontSize: '1.2rem' }}>📡</span> {order.operator || 'Any'}
-                 </div>
-                 <div className="ao-price">{fmt(order.price)}</div>
-              </div>
-
-              <div className="ao-status-box">
-                 <div className="ao-status-top">
-                    <div className="ao-svc-name">
-                       <img src={order.service_img} alt="" style={{ width: 24, height: 24, borderRadius: 4 }} />
-                       {order.service_name}
-                    </div>
-                    {order.otp_code ? (
-                       <div className="ao-status-text" style={{ color: 'var(--green)' }}>Selesai <IconCheck /></div>
-                    ) : (
-                       <div className="ao-status-text">Menunggu <IconClock /></div>
-                    )}
-                 </div>
-
-                 {order.otp_code ? (
-                    <div style={{ background: 'var(--green-soft)', padding: '16px', borderRadius: '12px', marginTop: '10px' }}>
-                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.4rem', fontWeight: 900, color: 'var(--green)', letterSpacing: '4px', textAlign: 'center' }}>{order.otp_code}</div>
-                       <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', textAlign: 'center', marginTop: '4px', fontWeight: 600 }}>{order.otp_msg}</div>
-                    </div>
-                 ) : (
-                    <div className="ao-status-desc">
-                       {cancelCooldown > 0 ? `Tunggu ${formatTime(cancelCooldown)} sebelum klik batal.` : 'Kamu sekarang bisa membatalkan pesanan ini.'}
-                    </div>
-                 )}
-              </div>
-
-              <div className="ao-actions">
-                 <button className="ao-btn ao-btn-lagi" onClick={() => setOrder(null)}>
-                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Beli lagi
-                 </button>
-                 {!order.otp_code && (
-                     <button className="ao-btn ao-btn-batal" disabled={cancelCooldown > 0 || cancelingOrder} onClick={cancelOrder}>
-                        {cancelingOrder ? <LoadingSpinner style={{ width: 18, height: 18 }} /> : <><svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg> Batal</>}
-                     </button>
-                 )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {tab === 'ppob' && (
-          <div style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            <div className="section-header-block">
-              <h2>PPOB & TOP UP GAME</h2>
-            </div>
-
-            {ppobError ? (
-               <div className="maintenance-box">
-                 <IconWarning />
-                 <h3>Sistem Maintenance</h3>
-                 <p>{ppobError}<br/>Silakan coba lagi nanti.</p>
-                 <button className="btn btn-secondary" onClick={fetchPpob}>🔄 Cek Kembali</button>
-               </div>
-            ) : (
-              <>
-                <div className="search-wrap">
-                  <span className="search-icon">⌕</span>
-                  <input value={ppobQuery} placeholder="Cari nama atau brand produk..." onChange={e => setPpobQuery(e.target.value)} />
-                </div>
-                {filteredPpob.length === 0 && !ppobLoading ? (
-                  <div className="empty-state">
-                    <span className="icon">🔍</span>
-                    <p>Tidak ada produk ditemukan</p>
-                  </div>
-                ) : (
-                  <div className="service-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-                    {filteredPpob.map((p, i) => (
-                      <button key={p.code} className="svc-card" style={{ animationDelay: `${(i % 15) * 0.03}s`, alignItems: 'flex-start', textAlign: 'left', padding: '16px' }}>
-                        <div className="svc-name" style={{ textAlign: 'left', fontSize: '0.82rem', marginBottom: 4 }}>{p.name}</div>
-                        <div style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: 8, textTransform: 'capitalize' }}>{p.brand} - {p.category}</div>
-                        <div className="svc-price" style={{ fontSize: '0.9rem' }}>{fmt(p.price)}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {tab === 'deposit' && (
-          <div className="deposit-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            <div className="section-header-block">
-              <h2>Top Up Saldo</h2>
-            </div>
-            {!qrisData ? (
-              <div className="deposit-card">
-                <div className="input-field">
-                  <label>Nominal Deposit</label>
-                  <input type="number" value={depositAmount} placeholder="Contoh: 10000" onChange={e => setDepositAmount(e.target.value)} />
-                </div>
-                <div className="deposit-amounts">
-                  {[2000, 5000, 10000, 20000, 50000, 100000].map(amt => (
-                    <button key={amt} className={`amount-chip ${depositAmount == amt ? 'active' : ''}`} onClick={() => setDepositAmount(String(amt))}>
-                      {fmt(amt).replace('Rp ', 'Rp')}
-                    </button>
-                  ))}
-                </div>
-                <button className="btn btn-primary" onClick={createQris} disabled={!depositAmount || Number(depositAmount) < 2000 || creatingQris} style={{ marginTop: 12, borderRadius: 'var(--r-full)' }}>
-                  {creatingQris ? <><LoadingSpinner style={{width:16, height:16}} /> Membuat QRIS...</> : '📲 Buat QRIS Pembayaran'}
-                </button>
-              </div>
-            ) : (
-              <div className="qris-topup-wrap">
-                {/* Blue QRIS Card */}
-                <div className="qris-blue-card">
-                  {/* Countdown bar */}
-                  {qrisCountdown > 0 ? (
-                    <div className="qris-expiry-bar">
-                      <div className="qris-expiry-info">
-                        <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M12 6v6l4 2"/></svg>
-                        <span>Batas Waktu Bayar</span>
-                      </div>
-                      <div className="qris-expiry-digits">
-                        <span className="qris-digit-box">{String(Math.floor(qrisCountdown / 60)).padStart(2,'0')[0]}</span>
-                        <span className="qris-digit-box">{String(Math.floor(qrisCountdown / 60)).padStart(2,'0')[1]}</span>
-                        <span className="qris-digit-sep">:</span>
-                        <span className="qris-digit-box">{String(qrisCountdown % 60).padStart(2,'0')[0]}</span>
-                        <span className="qris-digit-box">{String(qrisCountdown % 60).padStart(2,'0')[1]}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="qris-expiry-bar qris-expiry-expired">
-                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M15 9l-6 6M9 9l6 6"/></svg>
-                      <span>Waktu Pembayaran Habis</span>
-                    </div>
-                  )}
-                  {/* Header */}
-                  <div className="qris-blue-header-row">
-                    <span style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 8px', fontWeight: 900, fontSize: '0.9rem' }}>QRIS</span>
-                    <span style={{ fontWeight: 800, fontSize: '0.7rem', opacity: 0.9 }}>GPN ✦</span>
-                  </div>
-                  <div className="qris-blue-title">CINDIGITAL GROUP</div>
-                  <div className="qris-blue-nmid">NMID: ID2025429755718</div>
-                  {/* QR Image */}
-                  <div className="qris-blue-qr-wrap">
-                    <img src={qrisData.qr_image || qrisData.qr_url} alt="QRIS" onError={e => { e.target.style.opacity='0.2'; }} />
-                  </div>
-                  {/* Total row */}
-                  <div className="qris-blue-total">
-                    <span>Total Bayar</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1rem' }}>{qrisData.actual_amount.toLocaleString('id-ID')} IDR</span>
-                  </div>
-                  {/* Action buttons */}
-                  <div style={{ display: 'flex', gap: 8, padding: '12px 18px 0' }}>
-                    <button className="btn qris-btn-cancel" onClick={async () => {
-                      const depId = qrisData.id; const depAmt = qrisData.actual_amount || 0;
-                      setQrisData(null); setDepositAmount('');
-                      if (depId) { await api('deposit_cancel', { deposit_id: depId }); showCancelNotif(depAmt, 'Deposit telah dibatalkan'); }
-                    }}>
-                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                      Batalkan
-                    </button>
-                    <button className="btn qris-btn-download" onClick={() => downloadQrisImage(qrisData.qr_image || qrisData.qr_url)}>
-                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                      Unduh QRIS
-                    </button>
-                  </div>
-                  <div className="qris-scan-hint" style={{ padding: '10px 18px 14px' }}>
-                    Sistem memverifikasi pembayaran secara otomatis
-                  </div>
-                </div>
-
-                {/* Summary card */}
-                <div className="qris-summary-card">
-                  <div className="qris-summary-row">
-                    <span>Saldo Masuk</span>
-                    <span style={{ color: 'var(--green)', fontWeight: 900 }}>{qrisData.credit_amount.toLocaleString('id-ID')} IDR</span>
-                  </div>
-                  {qrisData.fee_amount > 0 && (
-                    <div className="qris-summary-row">
-                      <span>Biaya Admin</span>
-                      <span style={{ color: 'var(--amber)' }}>{qrisData.fee_amount.toLocaleString('id-ID')} IDR</span>
-                    </div>
-                  )}
-                  <div className="qris-summary-row qris-summary-total">
-                    <span>Total Bayar</span>
-                    <span>{qrisData.actual_amount.toLocaleString('id-ID')} IDR</span>
-                  </div>
-                  {/* Cek Pembayaran */}
-                  <button className="btn btn-primary qris-cek-btn" onClick={checkQrisPayment} disabled={busy}>
-                    {busy ? <LoadingSpinner style={{width:15,height:15}} /> : (
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    )}
-                    {busy ? 'Mengecek...' : 'Cek Pembayaran'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === 'activity' && (
-          <div className="activity-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            <div className="section-header-block">
-              <h2>Riwayat Aktivitas</h2>
-            </div>
-            {historyItems.length === 0 ? (
-              <div className="empty-state" style={{ paddingTop: 60 }}>
-                <span className="icon" style={{ fontSize: '3rem' }}>📋</span>
-                <p style={{ marginTop: 12, fontWeight: 600 }}>Belum ada transaksi</p>
-                <p style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: 4 }}>Transaksi kamu akan muncul di sini</p>
-              </div>
-            ) : (
-              <div className="history-list">
-                {historyItems.map((item, i) => {
-                   const isCompleted = item.status === 'completed' || item.status === 'success' || item.status === 'paid';
-                   const isCanceled = item.status === 'canceled' || item.status === 'cancel';
-                   const statusClass = isCompleted ? 'completed' : isCanceled ? 'canceled' : 'pending';
-                   const statusLabel = isCompleted ? 'Berhasil' : isCanceled ? 'Batal' : 'Pending';
-
-                   return (
-                     <div key={i} className="history-card" style={{ animationDelay: `${(i % 15) * 0.03}s` }} onClick={() => setSelectedHistoryItem(item)}>
-                        <div className="history-icon">
-                           {item.itemType === 'order' ? <SvgProduct /> : <SvgTopUp />}
-                        </div>
-                        <div className="history-info">
-                           <div className="history-title">
-                              {item.itemType === 'order' ? `${item.service_name || 'Virtual Number'} - ${item.operator || 'Any'}` : `Deposit Saldo QRIS`}
-                           </div>
-                           <div className="history-date">
-                              {formatReceiptDate(item.timestamp)}
-                           </div>
-                        </div>
-                        <div className={`history-status ${statusClass}`}>
-                           <div className="history-amt">
-                             {item.itemType === 'deposit' ? '+' : '-'}{fmt(item.itemType === 'deposit' ? (item.diterima || item.base_amount || item.amount || item.price) : (item.amount || item.price))}
-                           </div>
-                           {item.itemType === 'deposit' && (item.total || item.amount) > (item.diterima || item.base_amount) && (
-                             <div className="history-admin-fee">Bayar: {(item.total || item.amount || 0).toLocaleString('id-ID')} IDR</div>
-                           )}
-                           <span>{statusLabel}</span>
-                        </div>
-                     </div>
-                   );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === 'profile' && (
-          <div className="profile-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-              borderRadius: 20,
-              padding: '28px 20px 24px',
-              margin: '0 0 20px',
-              textAlign: 'center',
-              position: 'relative',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                width: 72, height: 72,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.2)',
-                border: '3px solid rgba(255,255,255,0.5)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '2rem', fontWeight: 900, color: '#fff',
-                margin: '0 auto 12px',
-                backdropFilter: 'blur(4px)',
-              }}>
-                {username ? username[0].toUpperCase() : user?.email?.[0]?.toUpperCase() || '?'}
-              </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: 4 }}>
-                {username || 'Pengguna'}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)', fontWeight: 500 }}>
-                {user?.email}
-              </div>
-            </div>
-
-            <div className="profile-section">
-              <div className="profile-section-title">
-                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                  <SvgProfile />
-                </span> Info Akun
-              </div>
-              <div className="profile-section-body">
-                <div className="input-field">
-                  <label>Username</label>
-                  <input type="text" value={username} placeholder="Nama unik tampilan" onChange={e => setUsername(e.target.value.replace(/\s/g, ''))} maxLength={30} />
-                </div>
-                <div className="input-field">
-                  <label>Email</label>
-                  <input type="email" value={user?.email || ''} disabled style={{ opacity: 0.45, cursor: 'not-allowed' }} />
-                </div>
-                <button className="btn btn-primary" onClick={saveProfile} disabled={savingProfile} style={{ borderRadius: 'var(--r-full)', marginTop: 8 }}>
-                  {savingProfile ? <><LoadingSpinner style={{width:16, height:16}} /> Menyimpan...</> : '💾 Simpan Profil'}
-                </button>
-              </div>
-            </div>
-
-            <div className="profile-section">
-              <div className="profile-section-title">
-                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="18"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                </span> {hasPassword ? 'Ganti Password' : 'Atur Password'}
-              </div>
-              <div className="profile-section-body">
-                {hasPassword && (
-                  <div className="input-field">
-                    <label>Password Saat Ini</label>
-                    <div className="input-icon-wrap">
-                      <input type={showCurPass ? 'text' : 'password'} value={curPass} placeholder="••••••••" onChange={e => setCurPass(e.target.value)} />
-                      <EyeToggle show={showCurPass} onToggle={() => setShowCurPass(v => !v)} />
-                    </div>
-                  </div>
-                )}
-                <div className="input-field">
-                  <label>Password Baru</label>
-                  <div className="input-icon-wrap">
-                    <input type={showNewPass ? 'text' : 'password'} value={profileNewPass} placeholder="Min. 6 karakter" onChange={e => setProfileNewPass(e.target.value)} />
-                    <EyeToggle show={showNewPass} onToggle={() => setShowNewPass(v => !v)} />
-                  </div>
-                </div>
-                <div className="input-field">
-                  <label>Konfirmasi Password</label>
-                  <div className="input-icon-wrap">
-                    <input type={showNewPass ? 'text' : 'password'} value={profileConfirmPass} placeholder="Ulangi password baru" onChange={e => setProfileConfirmPass(e.target.value)} />
-                    <EyeToggle show={showNewPass} onToggle={() => setShowNewPass(v => !v)} />
-                  </div>
-                </div>
-                {profileConfirmPass && profileNewPass !== profileConfirmPass && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
-                {profileConfirmPass && profileNewPass === profileConfirmPass && profileNewPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
-                <button className="btn btn-primary" onClick={savePassword} disabled={savingPass || profileNewPass.length < 6 || profileNewPass !== profileConfirmPass || (hasPassword && !curPass)} style={{ borderRadius: 'var(--r-full)', marginTop: 8 }}>
-                  {savingPass ? <><LoadingSpinner style={{width:16, height:16}} /> Menyimpan...</> : '🔐 Simpan Password'}
-                </button>
-              </div>
-            </div>
-
-            <div style={{ padding: '0 0 8px' }}>
-              <button className="btn btn-danger" onClick={logout} style={{ marginBottom: 0, borderRadius: 'var(--r-full)', width: '100%' }}>🚪 Keluar dari Akun</button>
-            </div>
-            <div style={{ height: 24 }} />
-          </div>
-        )}
-      </div>
-
-      <nav className="bottom-nav">
-        <button className={`nav-item ${tab === 'virtual' ? 'active' : ''}`} onClick={() => { setTab('virtual'); setOrder(null); }}>
-          <div className="nav-icon-wrap"><SvgProduct /></div>
-          <span>Produk</span>
-        </button>
-        <button className={`nav-item ${tab === 'ppob' ? 'active' : ''}`} onClick={() => setTab('ppob')}>
-          <div className="nav-icon-wrap"><SvgPPOB /></div>
-          <span>PPOB</span>
-        </button>
-        <button className={`nav-item ${tab === 'deposit' ? 'active' : ''}`} onClick={() => setTab('deposit')}>
-          <div className="nav-icon-wrap"><SvgTopUp /></div>
-          <span>Top Up</span>
-        </button>
-        <button className={`nav-item ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>
-          <div className="nav-icon-wrap"><SvgProfile /></div>
-          <span>Profil</span>
-        </button>
-      </nav>
-
-      {/* --- Detail Riwayat Modal (Receipt) --- */}
-      {selectedHistoryItem && (
-        <div className="receipt-overlay">
-           <div className="receipt-nav">
-              <div className="receipt-nav-back" onClick={() => setSelectedHistoryItem(null)}>
-                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                 Kembali
-              </div>
-              <div style={{ flex: 1, textAlign: 'center', marginLeft: '-24px', fontWeight: 800 }}>Payment</div>
-           </div>
-
-           <div className={`receipt-header-bg ${selectedHistoryItem.status === 'completed' || selectedHistoryItem.status === 'success' || selectedHistoryItem.status === 'paid' ? 'completed' : selectedHistoryItem.status === 'canceled' || selectedHistoryItem.status === 'cancel' ? 'canceled' : 'pending'}`}>
-              <div className="receipt-icon-circle">
-                 {selectedHistoryItem.status === 'completed' || selectedHistoryItem.status === 'success' || selectedHistoryItem.status === 'paid' ? <IconCheck /> : selectedHistoryItem.status === 'canceled' || selectedHistoryItem.status === 'cancel' ? <IconCross /> : <IconClock />}
-              </div>
-              <div className="receipt-status-text">
-                 {selectedHistoryItem.status === 'completed' || selectedHistoryItem.status === 'success' || selectedHistoryItem.status === 'paid' ? 'Transaksi Berhasil' : selectedHistoryItem.status === 'canceled' || selectedHistoryItem.status === 'cancel' ? 'Transaksi Dibatalkan' : 'Transaksi Pending'}
-              </div>
-              <div className="receipt-date-text">{formatReceiptDate(selectedHistoryItem.timestamp)}</div>
-           </div>
-
-           <div className="receipt-card">
-              <div className="receipt-total-label">Total Transaksi</div>
-              <div className="receipt-total-value">{(selectedHistoryItem.total || selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
-
-              {selectedHistoryItem.itemType === 'deposit' && (selectedHistoryItem.diterima || selectedHistoryItem.base_amount) && (selectedHistoryItem.total || selectedHistoryItem.amount) > (selectedHistoryItem.diterima || selectedHistoryItem.base_amount) && (
-                <div className="receipt-saldo-badge">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                  Saldo masuk&nbsp;<strong>{(selectedHistoryItem.diterima || selectedHistoryItem.base_amount || 0).toLocaleString('id-ID')} IDR</strong>
-                </div>
-              )}
-
-              <div className="receipt-box">
-                 <div className="receipt-box-icon">
-                    {selectedHistoryItem.itemType === 'order' ? <SvgProduct /> : <SvgTopUp />}
-                 </div>
-                 <div className="receipt-box-info">
-                    <div className="receipt-box-title">{selectedHistoryItem.itemType === 'order' ? selectedHistoryItem.service_name : 'Deposit Saldo'}</div>
-                    <div className="receipt-box-sub">{selectedHistoryItem.itemType === 'order' ? `${selectedHistoryItem.country || ''} / ${selectedHistoryItem.operator || 'Any'}` : 'QRIS / DANA'}</div>
-                 </div>
-              </div>
-
-              <div className="receipt-row receipt-row-id">
-                 <div className="receipt-row-label">ID Reff</div>
-                 <div className="receipt-id-wrap">
-                   <span className="receipt-id-text">{selectedHistoryItem.id}</span>
-                   <button className="receipt-copy-btn" onClick={() => { navigator.clipboard.writeText(selectedHistoryItem.id); showToast('success', 'Tersalin', 'ID berhasil disalin'); }}>
-                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                      Salin
-                   </button>
-                 </div>
-              </div>
-              <div className="receipt-row">
-                 <div className="receipt-row-label">Waktu transaksi</div>
-                 <div className="receipt-row-value">{formatReceiptDate(selectedHistoryItem.timestamp)}</div>
-              </div>
-              {selectedHistoryItem.itemType === 'order' && selectedHistoryItem.number && (
-                <div className="receipt-row">
-                   <div className="receipt-row-label">Nomor Telp</div>
-                   <div className="receipt-row-value">{selectedHistoryItem.number}</div>
-                </div>
-              )}
-
-              {selectedHistoryItem.itemType === 'deposit' && (selectedHistoryItem.status === 'pending' || selectedHistoryItem.status === 'waiting') && selectedHistoryItem.qr_image && (
-                <div className="qris-blue-card">
-                  {/* Expiry Countdown Header */}
-                  {depositCountdown > 0 && (
-                    <div className="qris-expiry-bar">
-                      <div className="qris-expiry-info">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M12 6v6l4 2"/></svg>
-                        <span>Batas Waktu Bayar</span>
-                      </div>
-                      <div className="qris-expiry-digits">
-                        <span className="qris-digit-box">{String(Math.floor(depositCountdown / 60)).padStart(2,'0')[0]}</span>
-                        <span className="qris-digit-box">{String(Math.floor(depositCountdown / 60)).padStart(2,'0')[1]}</span>
-                        <span className="qris-digit-sep">:</span>
-                        <span className="qris-digit-box">{String(depositCountdown % 60).padStart(2,'0')[0]}</span>
-                        <span className="qris-digit-box">{String(depositCountdown % 60).padStart(2,'0')[1]}</span>
-                      </div>
-                    </div>
-                  )}
-                  {depositCountdown === 0 && (
-                    <div className="qris-expiry-bar qris-expiry-expired">
-                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M15 9l-6 6M9 9l6 6"/></svg>
-                      <span>Waktu Pembayaran Habis</span>
-                    </div>
-                  )}
-                  <div className="qris-blue-header-row">
-                    <div style={{ fontWeight: 900, fontSize: '1.15rem', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 8px', fontSize: '0.9rem' }}>QRIS</span>
-                    </div>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.9, letterSpacing: '0.05em' }}>GPN ✦</div>
-                  </div>
-                  <div className="qris-blue-title">CINDIGITAL GROUP</div>
-                  <div className="qris-blue-nmid">NMID: ID2025429755718</div>
-                  <div className="qris-blue-qr-wrap">
-                    <img src={selectedHistoryItem.qr_image} alt="QRIS" />
-                  </div>
-                  <div className="qris-blue-total">
-                     <span>Total Bayar</span>
-                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1.05rem' }}>{(selectedHistoryItem.total || selectedHistoryItem.amount || 0).toLocaleString('id-ID')} IDR</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, padding: '12px 18px 0' }}>
-                    <button className="btn qris-btn-cancel" onClick={() => { const depId = selectedHistoryItem.id; const depAmt = selectedHistoryItem.total || selectedHistoryItem.amount || 0; setSelectedHistoryItem(null); cancelHistoryDeposit(depId, depAmt); }} disabled={busy}>
-                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                      Batalkan
-                    </button>
-                    <button className="btn qris-btn-download" onClick={() => downloadQrisImage(selectedHistoryItem.qr_image)}>
-                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                      Unduh QRIS
-                    </button>
-                  </div>
-                  <div className="qris-scan-hint" style={{ padding: '10px 18px 16px' }}>Sistem memverifikasi pembayaran secara otomatis</div>
-                </div>
-              )}
-
-              <div className="receipt-divider"></div>
-
-              <div className="receipt-row">
-                 <div className="receipt-row-label">Nominal</div>
-                 <div className="receipt-row-value">{(selectedHistoryItem.diterima || selectedHistoryItem.base_amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
-              </div>
-
-              {selectedHistoryItem.itemType === 'deposit' && (
-                <div className="receipt-row">
-                   <div className="receipt-row-label">Biaya Admin</div>
-                   <div className="receipt-row-value" style={{ color: (selectedHistoryItem.fee !== undefined ? selectedHistoryItem.fee : ((selectedHistoryItem.total || selectedHistoryItem.amount || 0) - (selectedHistoryItem.diterima || selectedHistoryItem.base_amount || 0))) > 0 ? 'var(--amber)' : 'var(--text)' }}>
-                     {(selectedHistoryItem.fee !== undefined ? selectedHistoryItem.fee : ((selectedHistoryItem.total || selectedHistoryItem.amount || 0) - (selectedHistoryItem.diterima || selectedHistoryItem.base_amount || 0))).toLocaleString('id-ID')} IDR
-                   </div>
-                </div>
-              )}
-
-              <div className="receipt-row" style={{ color: 'var(--blue2)', fontWeight: 800 }}>
-                 <div className="receipt-row-label" style={{ color: 'var(--blue2)' }}>Total Pembayaran</div>
-                 <div className="receipt-row-value">{(selectedHistoryItem.total || selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
-              </div>
-
-              <div className="receipt-footer-text">
-                 Gateway pembayaran oleh <strong>RumahOTP</strong>
-              </div>
-
-              {selectedHistoryItem.status !== 'pending' && selectedHistoryItem.status !== 'waiting' && (
-                 <div className="receipt-actions">
-                    <button className="btn btn-secondary" onClick={() => window.open('https://rumahotp.io', '_blank')}>Support</button>
-                    <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => setSelectedHistoryItem(null)}>Selesai</button>
-                 </div>
-              )}
-           </div>
-        </div>
-      )}
-
-      {/* --- Bottom Sheet Negara & Server --- */}
-      <div className={`sheet-overlay ${showSheet ? 'open' : ''}`} onClick={() => setShowSheet(false)} />
-      <div className={`bottom-sheet ${showSheet ? 'open' : ''}`}>
-        <div className="sheet-handle" />
-        <div className="sheet-header">
-          <div className="sheet-svc-row">
-            <div className="sheet-svc-icon">
-              {selectedSvc?.service_img && <img src={selectedSvc.service_img} alt="" />}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="sheet-svc-name">{selectedSvc?.service_name}</div>
-              <div className="sheet-title">Pilih Server Negara</div>
-            </div>
-          </div>
-          <div className="sheet-search">
-             <input type="text" placeholder="Cari negara (Contoh: Indonesia)" value={countryQuery} onChange={(e) => setCountryQuery(e.target.value)} />
-          </div>
-        </div>
-        <div className="sheet-body">
-          {filteredCountries.length === 0 && !loadingCountries ? (
-            <div className="empty-state" style={{ padding: '32px 0' }}>
-              <span className="icon">🌐</span>
-              <p>Tidak ada stok untuk pencarian tersebut</p>
-            </div>
-          ) : (
-            filteredCountries.map(c => {
-              const totalStock = c.available.length;
-              const isExpanded = expandedCountry === c.number_id;
-
-              return (
-                <div key={c.number_id || c.name} className="country-wrapper">
-                  <div className={`country-item ${isExpanded ? 'selected' : ''}`} onClick={() => setExpandedCountry(isExpanded ? null : c.number_id)}>
-                    <span className="country-flag">{getFlag(c.name)}</span>
-                    <span className="country-name">{c.name}</span>
-                    <div className="country-right">
-                      <div className="country-price">Mulai {fmt(c.available[0]?.price)}</div>
-                      <div className={`country-stock ${totalStock > 3 ? 'text-green' : totalStock > 0 ? 'text-amber' : 'text-red'}`}>
-                        {totalStock > 0 ? `${totalStock} server` : 'Habis'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="provider-list">
-                      {c.available.map(prov => (
-                        <div key={prov.provider_id} className="provider-item">
-                          <div className="provider-info">
-                            <span className="provider-id">ID: {prov.provider_id}</span>
-                            <span className="provider-price">{fmt(prov.price)}</span>
-                          </div>
-                          <button className="btn-order" disabled={loadingOperators} onClick={() => handleOrderClick(c, prov)}>
-                            {loadingOperators && selectedOrderContext?.provider?.provider_id === prov.provider_id ? <LoadingSpinner style={{ width: 14, height: 14, borderWidth: 2 }} /> : 'Pilih'}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      <div className={`modal-overlay ${showOperatorModal ? 'open' : ''}`} onClick={() => setShowOperatorModal(false)}>
-        <div className={`modal-content ${showOperatorModal ? 'popIn' : ''}`} onClick={e => e.stopPropagation()} style={{ padding: '24px' }}>
-          <h3 style={{ marginBottom: '16px', fontSize: '1.15rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Pilih Operator Seluler</h3>
-          {loadingOperators ? (
-            <div className="loading-grid" style={{ padding: '24px 0' }}><LoadingSpinner /></div>
-          ) : (
-            <div className="operator-grid">
-              {operators.map(op => (
-                <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op)}>
-                  <div className="operator-icon-placeholder">
-                     <img src={op.operator_img || op.image || op.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(op.name)}&background=random&color=fff&size=128&bold=true`} alt={op.name} />
-                  </div>
-                  <span>{op.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-    {/* ===== GLOBAL MODAL (Saldo Tidak Cukup, dll) ===== */}
-    <div className={`modal-overlay ${modal.show ? 'open' : ''}`} onClick={closeModal}>
-      <div className={`modal-content ${modal.show ? 'popIn' : ''}`} onClick={e => e.stopPropagation()}>
-
-        {/* Icon animasi */}
-        <div className={`modal-svg-wrap ${modal.type}`} style={{ width: 76, height: 76 }}>
-          {modal.type === 'warning' && (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 38, height: 38 }}>
-              <rect x="2" y="9" width="20" height="13" rx="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 9V7a5 5 0 0110 0v2"/>
-              <circle cx="12" cy="15.5" r="1.5" fill="currentColor" stroke="none"/>
-            </svg>
-          )}
-          {modal.type === 'error' && <IconCross />}
-          {modal.type === 'success' && <IconCheck />}
-          {modal.type === 'info' && <span style={{ fontSize: 32 }}>ℹ️</span>}
-        </div>
-
-        <h3 style={{ fontSize: '1.22rem' }}>{modal.title}</h3>
-        <p style={{ fontSize: '0.88rem', marginBottom: modal.onConfirm ? 20 : 24 }}>{modal.msg}</p>
-
-        {/* Tombol aksi */}
-        {modal.onConfirm ? (
-          <div className="modal-actions">
-            <button
-              className="btn btn-secondary"
-              style={{ height: 48 }}
-              onClick={closeModal}
-            >
-              Nanti
-            </button>
-            <button
-              className="btn btn-primary"
-              style={{
-                height: 48,
-                background: 'linear-gradient(135deg, #ffb340 0%, #ff7c20 100%)',
-                border: 'none',
-                fontWeight: 800,
-                letterSpacing: '0.02em',
-                boxShadow: '0 4px 18px rgba(255,140,32,0.35)',
-              }}
-              onClick={() => { modal.onConfirm(); closeModal(); }}
-            >
-              💳 Top Up Sekarang
-            </button>
-          </div>
-        ) : (
-          <div className="modal-actions">
-            <button className="btn btn-primary" style={{ height: 48 }} onClick={closeModal}>
-              Oke, Mengerti
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-
-    </>
-  );
+/* ===== BASE ===== */
+:root {
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 24px;
+  --r-2xl: 32px;
+  --r-full: 9999px;
+  --ease: cubic-bezier(0.34,1.56,0.64,1);
+  --ease-out: cubic-bezier(0.16,1,0.3,1);
+  --ease-in-out: cubic-bezier(0.4,0,0.2,1);
+  --nav-h: 80px;
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+button { cursor: pointer; font-family: inherit; border: none; background: none; }
+input, textarea { font-family: inherit; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.35s var(--ease-in-out), color 0.35s var(--ease-in-out);
+}
+
+/* ===== AUTH SCREENS ===== */
+.auth-screen {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px 20px 40px;
+}
+.welcome-bg {
+  background: radial-gradient(ellipse at 50% -10%, var(--blue-soft) 0%, var(--bg) 55%);
+}
+
+.welcome-wrapper {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; text-align: center;
+}
+.welcome-wrapper.floating { animation: floatLogo 4s ease-in-out infinite; }
+@keyframes floatLogo {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.auth-logo-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--green-soft);
+  border: 1px solid rgba(0,232,122,0.25);
+  padding: 5px 14px; border-radius: var(--r-full);
+  margin-bottom: 8px;
+}
+.auth-logo-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 10px var(--green);
+  animation: pulse-green 2s ease-in-out infinite;
+}
+.auth-logo-badge span {
+  font-size: 0.6rem; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--green);
+}
+.logo-title {
+  font-family: var(--font-display);
+  font-size: 3rem; font-weight: 900;
+  letter-spacing: -0.02em; line-height: 1.05;
+  color: var(--text);
+}
+.logo-title span {
+  background: linear-gradient(135deg, var(--blue2), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.logo-subtitle {
+  font-size: 0.82rem; color: var(--text-3);
+  letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700;
+  margin-top: 4px;
+}
+
+.welcome-card {
+  width: 100%; max-width: 360px;
+  background: var(--glass);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-2xl);
+  padding: 30px 22px;
+  margin-top: 36px;
+  backdrop-filter: blur(24px);
+  animation: slideUp 0.5s var(--ease-out) both;
+  box-shadow: var(--card-shadow);
+}
+
+.auth-logo-small {
+  display: flex; flex-direction: column; align-items: center; margin-bottom: 24px;
+}
+.auth-logo-small h1 {
+  font-family: var(--font-display);
+  font-size: 2rem; font-weight: 900;
+  letter-spacing: -0.03em; line-height: 1;
+}
+.auth-logo-small h1 span { color: var(--blue2); }
+
+.auth-card {
+  width: 100%; max-width: 380px;
+  background: var(--glass);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-2xl);
+  padding: 30px 22px;
+  backdrop-filter: blur(24px);
+  animation: slideUp 0.5s var(--ease-out) both;
+  box-shadow: var(--card-shadow);
+}
+
+.auth-card-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem; font-weight: 800;
+  margin-bottom: 6px;
+}
+.auth-card-sub {
+  font-size: 0.82rem; color: var(--text-3);
+  margin-bottom: 22px; line-height: 1.5;
+}
+
+.input-field { display: flex; flex-direction: column; margin-bottom: 14px; width: 100%; }
+.input-field label {
+  font-size: 0.7rem; font-weight: 800; color: var(--text-3); letter-spacing: 0.06em;
+  text-transform: uppercase; margin-bottom: 7px; text-align: left;
+}
+.input-field input {
+  width: 100%; background: var(--glass2); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 13px 15px; color: var(--text); font-size: 0.92rem; outline: none; transition: all 0.2s var(--ease-in-out);
+}
+.input-field input:focus { border-color: var(--border-blue2); background: var(--blue-soft); box-shadow: 0 0 0 3px var(--blue-soft); }
+.input-field input::placeholder { color: var(--text-4); }
+.input-field input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.input-icon-wrap { position: relative; width: 100%; }
+.input-icon-wrap input { padding-right: 46px; }
+.input-icon-wrap .eye-btn {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--text-3); font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; transition: color 0.2s;
+}
+.input-icon-wrap .eye-btn:hover { color: var(--text-2); }
+
+.otp-info { background: var(--blue-soft); border: 1px solid var(--border-blue); border-radius: var(--r-md); padding: 11px 14px; font-size: 0.78rem; color: var(--text-2); margin-bottom: 14px; line-height: 1.5; }
+.otp-info strong { color: var(--text); }
+
+.timer-bar { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-md); margin-bottom: 14px; transition: border-color 0.3s; }
+.timer-bar.warning { border-color: rgba(255,179,64,0.35); background: var(--amber-soft); }
+.timer-bar.expired { border-color: rgba(255,64,96,0.35); background: var(--red-soft); }
+.timer-time { font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: var(--blue2); transition: color 0.3s; }
+.timer-time.warning { color: var(--amber); }
+.timer-time.expired { color: var(--red); }
+.timer-label { font-size: 0.72rem; color: var(--text-3); font-weight: 600; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 13px 20px; border-radius: var(--r-lg);
+  font-size: 0.92rem; font-weight: 700; letter-spacing: 0.02em;
+  transition: all 0.22s var(--ease-out); position: relative; overflow: hidden;
+}
+.btn::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0); transition: background 0.15s; }
+.btn:active::after { background: rgba(255,255,255,0.1); }
+
+.btn-primary { background: linear-gradient(135deg, var(--blue) 0%, var(--blue2) 100%); color: #ffffff; box-shadow: 0 6px 22px var(--blue-glow); margin-bottom: 10px; border: none; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 30px var(--blue-glow); filter: brightness(1.08); }
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-secondary { background: var(--glass2); border: 1px solid var(--border2); color: var(--text); margin-bottom: 10px; }
+.btn-secondary:hover:not(:disabled) { background: var(--glass3); border-color: var(--border-blue); }
+.btn-secondary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-ghost { background: none; color: var(--text-3); font-size: 0.83rem; font-weight: 600; padding: 10px; width: auto; margin: 0 auto; display: block; }
+.btn-ghost:hover { color: var(--text-2); }
+
+.btn-danger { background: var(--red-soft); border: 1px solid rgba(220,38,38,0.25); color: var(--red); margin-bottom: 10px; }
+.btn-danger:hover:not(:disabled) { background: rgba(220,38,38,0.2); }
+
+.btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 4px 20px var(--green-glow); margin-bottom: 10px; }
+.btn-success:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 28px var(--green-glow); }
+.btn-success:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ===== APP HEADER ===== */
+.app-header { padding: 26px 18px 14px; position: sticky; top: 0; z-index: 40; background: var(--bg); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); }
+.header-row { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+.header-brand { display: flex; flex-direction: column; gap: 4px; }
+.header-online {
+  display: inline-flex; align-items: center; gap: 5px; background: var(--green-soft);
+  border: 1px solid rgba(0,232,122,0.22); padding: 3px 10px; border-radius: var(--r-full); width: fit-content;
+  font-size: 0.56rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--green);
+}
+.header-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse-green 2s ease-in-out infinite; }
+.header-title { font-family: var(--font-display); font-size: 1.7rem; font-weight: 900; letter-spacing: -0.03em; line-height: 1; }
+.header-title span { color: var(--blue2); }
+
+.theme-toggle { width: 42px; height: 42px; border-radius: 50%; background: var(--glass2); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: all 0.22s var(--ease-out); cursor: pointer; flex-shrink: 0; }
+.theme-toggle:hover { background: var(--blue-soft); border-color: var(--border-blue); color: var(--blue2); transform: scale(1.05); }
+
+/* ===== BALANCE CARD ===== */
+.balance-card {
+  background: linear-gradient(145deg, #1a3570 0%, #2563eb 55%, #3b82f6 100%);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 22px;
+  padding: 20px 22px;
+  position: relative; overflow: hidden;
+  box-shadow: 0 12px 36px rgba(37,99,235,0.32);
+  margin-bottom: 18px;
+  animation: slideDown 0.55s var(--ease-out) 0.1s both;
+}
+.balance-bg-shape {
+  position: absolute; top: -35px; right: -15px;
+  width: 130px; height: 130px; border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  filter: blur(22px);
+}
+.balance-bg-shape2 {
+  position: absolute; bottom: -45px; left: 5px;
+  width: 110px; height: 110px; border-radius: 50%;
+  background: rgba(0,212,255,0.22);
+  filter: blur(28px);
+}
+.balance-content {
+  position: relative; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.balance-left { flex: 1; }
+.balance-label {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.72rem; font-weight: 800; color: rgba(255,255,255,0.82);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px;
+}
+.balance-badge {
+  background: rgba(0,232,122,0.25); color: #00e87a;
+  padding: 2px 8px; border-radius: 12px; font-size: 0.56rem; font-weight: 800;
+}
+.balance-amount {
+  font-family: var(--font-mono); font-size: 1.75rem; font-weight: 900;
+  color: #ffffff; letter-spacing: -0.02em; line-height: 1.1; 
+  text-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.balance-user {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.8rem; color: rgba(255,255,255,0.88);
+  margin-top: 9px; font-weight: 600;
+}
+.user-icon { font-size: 1rem; }
+.btn-topup-new {
+  display: flex; align-items: center; gap: 6px;
+  background: #ffffff; color: #1d4ed8;
+  font-size: 0.85rem; font-weight: 800;
+  padding: 11px 16px; border-radius: 18px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+  transition: all 0.22s var(--ease-out); flex-shrink: 0; border: none;
+}
+.btn-topup-new:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 10px 24px rgba(0,0,0,0.22); }
+
+.tab-content { padding: 14px 14px calc(var(--nav-h) + 56px); max-width: 480px; margin: 0 auto; }
+
+/* ===== SECTION HEADER ===== */
+.section-header-block { 
+  display: flex; align-items: center; justify-content: space-between; 
+  margin-bottom: 14px; width: 100%;
+}
+.section-header-block h2 { 
+  font-family: var(--font-display); font-size: 1.05rem; font-weight: 900; 
+  color: var(--text); margin: 0;
+}
+.section-header-block .count { 
+  font-size: 0.72rem; font-weight: 700; color: var(--text-3); 
+  background: var(--glass2); padding: 3px 10px; border-radius: var(--r-full);
+  border: 1px solid var(--border);
+}
+
+/* ===== SEARCH ===== */
+.search-wrap { position: relative; margin-bottom: 14px; }
+.search-wrap input { width: 100%; background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-full); padding: 11px 16px 11px 42px; color: var(--text); font-size: 0.9rem; outline: none; transition: all 0.22s var(--ease-in-out); }
+.search-wrap input:focus { border-color: var(--border-blue); box-shadow: 0 0 0 3px var(--blue-soft); background: var(--glass2); }
+.search-wrap input::placeholder { color: var(--text-4); }
+.search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 1.1rem; pointer-events: none; }
+
+/* ===== SERVICE GRID ===== */
+.service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.svc-card {
+  background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 14px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 7px;
+  cursor: pointer; transition: all 0.22s var(--ease-out); position: relative; overflow: hidden;
+  animation: fadeIn 0.3s var(--ease-out) both; box-shadow: var(--card-shadow);
+}
+.svc-card::before {
+  content: ''; position: absolute; inset: 0; opacity: 0;
+  background: linear-gradient(135deg, var(--blue-soft), transparent);
+  transition: opacity 0.22s;
+}
+.svc-card:hover { border-color: var(--border-blue); transform: translateY(-3px); box-shadow: var(--card-shadow-lg); }
+.svc-card:hover::before { opacity: 1; }
+.svc-card:active { transform: scale(0.97); }
+.svc-icon-wrap { width: 44px; height: 44px; border-radius: var(--r-sm); overflow: hidden; background: var(--glass2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.svc-icon { width: 100%; height: 100%; object-fit: cover; }
+.svc-name { font-size: 0.75rem; font-weight: 800; text-align: center; line-height: 1.3; color: var(--text-2); width: 100%; word-break: break-word; }
+.svc-price { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 800; color: var(--cyan); }
+.svc-stock { font-size: 0.62rem; font-weight: 700; text-align: center; }
+
+/* ===== LOADING ===== */
+.loading-grid { display: flex; flex-direction: column; align-items: center; padding: 44px 0; gap: 12px; }
+.loading-spinner { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--border2); border-top-color: var(--blue); animation: spin 0.75s linear infinite; }
+.loading-text { font-size: 0.82rem; font-weight: 600; color: var(--text-3); }
+
+/* ===== BOTTOM SHEET ===== */
+.sheet-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.55); backdrop-filter: blur(5px); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.sheet-overlay.open { opacity: 1; pointer-events: all; }
+.bottom-sheet {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%); width: 100%; max-width: 480px; z-index: 51;
+  background: var(--bg); border: 1px solid var(--border2); border-bottom: none; border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+  padding: 0 0 24px; max-height: 85vh; display: flex; flex-direction: column; transition: transform 0.38s var(--ease-out); box-shadow: 0 -20px 60px rgba(0,0,0,0.12);
+}
+.bottom-sheet.open { transform: translateX(-50%) translateY(0); }
+.sheet-handle { width: 44px; height: 5px; border-radius: var(--r-full); background: var(--border2); margin: 13px auto 0; flex-shrink: 0; }
+.sheet-header { padding: 14px 18px 12px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+.sheet-svc-row { display: flex; align-items: center; gap: 11px; margin-bottom: 4px; }
+.sheet-svc-icon { width: 42px; height: 42px; border-radius: var(--r-sm); overflow: hidden; background: var(--glass2); flex-shrink: 0; }
+.sheet-svc-icon img { width: 100%; height: 100%; object-fit: cover; }
+.sheet-svc-name { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; }
+.sheet-title { font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.sheet-search { margin-top: 12px; }
+.sheet-search input { width: 100%; background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-full); padding: 11px 16px; color: var(--text); font-size: 0.88rem; outline: none; transition: all 0.22s var(--ease-in-out); }
+.sheet-search input:focus { border-color: var(--border-blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+.sheet-search input::placeholder { color: var(--text-4); }
+.sheet-body { flex: 1; overflow-y: auto; padding: 10px 14px; overscroll-behavior: contain; }
+.sheet-footer { padding: 14px 18px 0; flex-shrink: 0; border-top: 1px solid var(--border); }
+
+/* ===== COUNTRY / PROVIDER ===== */
+.country-wrapper { margin-bottom: 7px; }
+.country-item { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-radius: var(--r-md); cursor: pointer; transition: all 0.2s; background: var(--glass); border: 1px solid transparent; box-shadow: var(--card-shadow); }
+.country-item:hover { background: var(--glass2); transform: translateY(-1px); }
+.country-item.selected { background: var(--blue-soft); border-color: var(--border-blue); }
+.country-flag { font-size: 1.2rem; flex-shrink: 0; }
+.country-name { flex: 1; font-size: 0.82rem; font-weight: 700; color: var(--text); }
+.country-right { text-align: right; }
+.country-price { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 800; color: var(--cyan); }
+.country-stock { font-size: 0.62rem; font-weight: 700; margin-top: 2px; }
+
+.provider-list {
+  background: var(--glass2); border-radius: var(--r-md); padding: 9px; margin-top: -4px; margin-bottom: 7px;
+  display: flex; flex-direction: column; gap: 5px; animation: fadeIn 0.25s ease;
+}
+.provider-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--glass); padding: 9px 12px; border-radius: var(--r-sm); border: 1px solid var(--border);
+}
+.provider-info { display: flex; align-items: center; gap: 10px; }
+.provider-id { font-size: 0.68rem; color: var(--text-3); font-weight: 700; text-transform: uppercase; }
+.provider-price { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: var(--cyan); }
+.btn-order { background: transparent; border: 1px solid var(--blue2); color: var(--blue2); padding: 6px 13px; border-radius: var(--r-full); font-size: 0.72rem; font-weight: 700; transition: all 0.2s; min-width: 60px; display: flex; justify-content: center; }
+.btn-order:hover { background: var(--blue2); color: #fff; transform: scale(1.04); }
+.btn-order:disabled { opacity: 0.5; cursor: not-allowed; border-color: var(--border); color: var(--text-4); background: transparent; }
+
+/* ===== OPERATOR MODAL ===== */
+.operator-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.operator-card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all 0.22s; cursor: pointer; }
+.operator-card:hover { background: var(--blue-soft); border-color: var(--border-blue); transform: translateY(-2px); box-shadow: var(--card-shadow); }
+.operator-card:active { transform: scale(0.95); }
+.operator-card span { font-size: 0.66rem; font-weight: 700; color: var(--text-2); text-align: center; line-height: 1.2; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
+.operator-icon-placeholder { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); flex-shrink: 0; }
+.operator-icon-placeholder img { width: 100%; height: 100%; object-fit: contain; padding: 2px; }
+
+/* ===== TOAST ===== */
+.toast-container { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; width: 92%; max-width: 370px; pointer-events: none; }
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border2); border-radius: var(--r-xl);
+  padding: 13px 16px; display: flex; align-items: center; gap: 12px;
+  box-shadow: var(--card-shadow-lg); animation: toastIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  backdrop-filter: blur(16px); pointer-events: all;
+}
+.toast-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.toast-icon svg { width: 18px; height: 18px; }
+.toast-icon.error { background: var(--red-soft); color: var(--red); border: 1px solid rgba(220,38,38,0.2); }
+.toast-icon.success { background: var(--green-soft); color: var(--green); border: 1px solid rgba(0,232,122,0.2); }
+.toast-icon.warning { background: var(--amber-soft); color: var(--amber); border: 1px solid rgba(255,179,64,0.2); }
+.toast-icon.info { background: var(--blue-soft); color: var(--blue2); border: 1px solid var(--border-blue); }
+.toast-content { flex: 1; min-width: 0; }
+.toast-title { font-size: 0.82rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+.toast-msg { font-size: 0.72rem; font-weight: 500; color: var(--text-3); line-height: 1.3; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-22px) scale(0.93); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 999; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-content {
+  background: var(--surface); border: 1px solid var(--border2); border-radius: var(--r-2xl);
+  padding: 30px 22px; width: 90%; max-width: 360px; text-align: center; box-shadow: var(--card-shadow-lg);
+}
+.popIn { animation: popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+@keyframes popIn { 0% { opacity: 0; transform: scale(0.72) translateY(28px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+.modal-svg-wrap {
+  width: 68px; height: 68px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px; animation: bounceSVG 2.5s infinite ease-in-out;
+}
+.modal-svg-wrap.error { background: var(--red-soft); color: var(--red); box-shadow: 0 0 22px rgba(255,64,96,0.22); }
+.modal-svg-wrap.success { background: var(--green-soft); color: var(--green); box-shadow: 0 0 22px rgba(0,232,122,0.22); }
+.modal-svg-wrap.warning { background: var(--amber-soft); color: var(--amber); box-shadow: 0 0 22px rgba(255,179,64,0.22); }
+.modal-svg-wrap.info { background: var(--blue-soft); color: var(--blue2); }
+@keyframes bounceSVG { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.modal-content h3 { font-family: var(--font-display); font-size: 1.28rem; font-weight: 900; margin-bottom: 9px; }
+.modal-content p { font-size: 0.86rem; color: var(--text-3); margin-bottom: 24px; line-height: 1.5; font-weight: 500; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn { flex: 1; height: 48px; }
+
+/* ===== ACTIVE ORDER ===== */
+.active-order-wrap { background: var(--glass); border: 1px solid var(--border2); border-radius: var(--r-2xl); padding: 18px; box-shadow: var(--card-shadow); animation: slideUp 0.4s var(--ease-out) both; margin-bottom: 18px; }
+.ao-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--border); }
+.ao-title { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; }
+.ao-refresh { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--blue2); transition: all 0.2s; cursor: pointer; }
+.ao-refresh:hover { background: var(--glass2); }
+
+.ao-body { display: flex; flex-direction: column; gap: 14px; }
+.ao-row { display: flex; align-items: center; justify-content: space-between; }
+.ao-num-wrap { display: flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-size: 1.18rem; font-weight: 800; color: var(--text); cursor: pointer; }
+.ao-num-wrap:active { opacity: 0.7; }
+.ao-timer { background: var(--amber-soft); color: var(--amber); padding: 4px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 800; font-family: var(--font-mono); }
+
+.ao-prov-wrap { display: flex; align-items: center; gap: 7px; font-size: 0.86rem; font-weight: 700; color: var(--text-2); text-transform: capitalize; }
+.ao-price { background: var(--blue-soft); color: var(--blue2); padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 800; font-family: var(--font-mono); }
+
+.ao-status-box { border: 1px solid var(--border-blue); border-radius: var(--r-lg); padding: 14px; background: rgba(79,140,255,0.02); }
+.ao-status-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.ao-svc-name { display: flex; align-items: center; gap: 7px; font-size: 0.9rem; font-weight: 800; }
+.ao-status-text { color: var(--amber); font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+.ao-status-desc { font-size: 0.72rem; color: var(--text-3); font-weight: 500; }
+
+.ao-actions { display: flex; gap: 10px; margin-top: 4px; }
+.ao-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px; border-radius: var(--r-lg); font-size: 0.82rem; font-weight: 800; transition: all 0.2s; border: 1px solid transparent; }
+.ao-btn-batal { border-color: rgba(220,38,38,0.28); color: var(--red); background: var(--red-soft); }
+.ao-btn-batal:hover:not(:disabled) { background: rgba(220,38,38,0.18); }
+.ao-btn-batal:disabled { opacity: 0.5; cursor: not-allowed; border-color: var(--border); color: var(--text-4); background: transparent; }
+.ao-btn-lagi { border-color: var(--border-blue); color: var(--blue2); background: transparent; }
+.ao-btn-lagi:hover { background: var(--blue-soft); }
+
+/* ===== HISTORY / ACTIVITY ===== */
+.activity-wrap { display: flex; flex-direction: column; gap: 0; }
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+.history-card {
+  background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  cursor: pointer; transition: all 0.22s var(--ease-out); animation: fadeIn 0.3s ease both;
+  box-shadow: var(--card-shadow);
+}
+.history-card:hover { transform: translateY(-2px); border-color: var(--border-blue); background: var(--glass2); box-shadow: var(--card-shadow-lg); }
+.history-card:active { transform: scale(0.98); }
+.history-icon { width: 42px; height: 42px; border-radius: 50%; background: var(--blue-soft); color: var(--blue2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border-blue); }
+.history-info { flex: 1; min-width: 0; }
+.history-title { font-size: 0.82rem; font-weight: 800; color: var(--text); margin-bottom: 3px; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-date { font-size: 0.66rem; color: var(--text-3); font-weight: 600; }
+.history-status { text-align: right; flex-shrink: 0; }
+.history-amt { font-family: var(--font-mono); font-size: 0.82rem; font-weight: 800; margin-bottom: 5px; }
+.history-status.pending .history-amt { color: var(--amber); }
+.history-status.completed .history-amt { color: var(--green); }
+.history-status.waiting .history-amt { color: var(--amber); }
+.history-status.canceled .history-amt { color: var(--red); text-decoration: line-through; opacity: 0.7; }
+.history-status span { font-size: 0.6rem; font-weight: 800; padding: 3px 9px; border-radius: 10px; background: var(--glass2); text-transform: capitalize; border: 1px solid var(--border); }
+.history-status.completed span { color: var(--green); background: var(--green-soft); border-color: rgba(0,232,122,0.2); }
+.history-status.canceled span { color: var(--red); background: var(--red-soft); border-color: rgba(220,38,38,0.2); }
+.history-status.pending span { color: var(--amber); background: var(--amber-soft); border-color: rgba(255,179,64,0.2); }
+/* Admin fee badge in history */
+.history-admin-fee { font-size: 0.58rem; color: var(--text-3); font-weight: 600; margin-top: 2px; }
+
+/* ===== RECEIPT ===== */
+.receipt-overlay { position: fixed; inset: 0; z-index: 1000; background: var(--bg); display: flex; flex-direction: column; overflow-y: auto; animation: slideUp 0.3s ease-out forwards; }
+.receipt-nav { display: flex; align-items: center; padding: 14px 18px; font-weight: 800; font-size: 1.05rem; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+.receipt-nav-back { display: flex; align-items: center; gap: 6px; color: var(--text); cursor: pointer; font-size: 0.88rem; }
+.receipt-header-bg { padding: 28px 18px 56px; display: flex; flex-direction: column; align-items: center; text-align: center; color: #fff; transition: background 0.3s; }
+.receipt-header-bg.completed, .receipt-header-bg.success, .receipt-header-bg.paid { background: linear-gradient(145deg, #1d4ed8, #3b82f6); }
+.receipt-header-bg.canceled, .receipt-header-bg.cancel { background: linear-gradient(145deg, #991b1b, #ef4444); }
+.receipt-header-bg.pending, .receipt-header-bg.waiting { background: linear-gradient(145deg, #92400e, #f59e0b); }
+.receipt-icon-circle {
+  width: 62px; height: 62px; background: rgba(255,255,255,0.95); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 14px; font-size: 1.8rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+.receipt-header-bg.canceled .receipt-icon-circle,
+.receipt-header-bg.cancel .receipt-icon-circle { color: #ef4444; animation: receiptCancelShake 0.6s cubic-bezier(.36,.07,.19,.97) 0.2s both; }
+.receipt-header-bg.completed .receipt-icon-circle,
+.receipt-header-bg.success .receipt-icon-circle,
+.receipt-header-bg.paid .receipt-icon-circle { color: #2563eb; animation: receiptSuccessBounce 0.5s var(--ease) 0.2s both; }
+.receipt-header-bg.pending .receipt-icon-circle,
+.receipt-header-bg.waiting .receipt-icon-circle { color: #d97706; animation: receiptPulseWait 1.5s ease-in-out 0.3s infinite; }
+.receipt-status-text { font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; margin-bottom: 5px; text-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+.receipt-date-text { font-size: 0.76rem; font-weight: 600; opacity: 0.88; }
+.receipt-card { background: var(--surface); margin: -28px 18px 18px; border-radius: var(--r-2xl); padding: 22px 18px; box-shadow: var(--card-shadow-lg); position: relative; z-index: 5; border: 1px solid var(--border); animation: receiptCardUp 0.4s var(--ease-out) 0.15s both; }
+@keyframes receiptCardUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.receipt-total-label { font-size: 0.8rem; color: var(--text-3); text-align: center; margin-bottom: 5px; font-weight: 600; }
+.receipt-total-value { font-family: var(--font-mono); font-size: 2rem; font-weight: 900; color: var(--blue2); text-align: center; margin-bottom: 12px; letter-spacing: -1px; }
+
+/* Saldo masuk badge - redesigned */
+.receipt-saldo-badge {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  margin: 0 auto 20px; padding: 6px 16px;
+  background: var(--green-soft); color: var(--green);
+  border: 1px solid rgba(0,232,122,0.25); border-radius: var(--r-full);
+  font-size: 0.76rem; font-weight: 700; width: fit-content;
+  animation: fadeIn 0.3s ease both;
+}
+.receipt-saldo-badge strong { font-weight: 900; }
+
+/* ID row redesign - no wrapping overflow */
+.receipt-row-id { flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.receipt-id-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
+.receipt-id-text {
+  font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700;
+  color: var(--text); background: var(--glass2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 5px 10px; flex: 1; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+  letter-spacing: 0.02em;
+}
+.receipt-copy-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px;
+  background: var(--blue-soft); border: 1px solid var(--border-blue);
+  color: var(--blue2); border-radius: var(--r-sm); font-size: 0.72rem;
+  font-weight: 800; cursor: pointer; flex-shrink: 0; transition: all 0.18s;
+  font-family: var(--font-sans);
+}
+.receipt-copy-btn:hover { background: var(--blue2); color: #fff; border-color: var(--blue2); }
+
+.receipt-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; font-size: 0.82rem; }
+.receipt-row-label { color: var(--text-3); font-weight: 600; flex: 1; }
+.receipt-row-value { color: var(--text); font-weight: 800; text-align: right; flex: 1.5; word-break: break-word; }
+.receipt-copy { color: var(--text-3); cursor: pointer; display: inline-flex; align-items: center; margin-left: 6px; transition: color 0.2s; }
+.receipt-copy:hover { color: var(--text); }
+.receipt-box { border: 1px solid var(--border); border-radius: var(--r-md); padding: 11px 13px; display: flex; align-items: center; gap: 11px; margin-bottom: 22px; background: var(--glass2); }
+.receipt-box-icon { width: 40px; height: 40px; border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); color: var(--blue2); flex-shrink: 0; }
+.receipt-box-icon svg { max-width: 22px; max-height: 22px; }
+.receipt-box-info { display: flex; flex-direction: column; }
+.receipt-box-title { font-weight: 800; font-size: 0.86rem; color: var(--text); text-transform: uppercase; }
+.receipt-box-sub { font-weight: 600; font-size: 0.72rem; color: var(--text-3); }
+.receipt-divider { height: 1px; background: transparent; border-top: 1px dashed var(--border2); margin: 20px 0; }
+.receipt-footer-text { font-size: 0.67rem; color: var(--text-3); text-align: center; margin-top: 28px; font-weight: 600; }
+.receipt-actions { display: flex; gap: 10px; margin-top: 22px; }
+.receipt-actions .btn { flex: 1; border-radius: var(--r-full); height: 48px; }
+
+/* ===== QRIS BLUE CARD (history pending) — redesigned ===== */
+.qris-blue-card { background: linear-gradient(145deg, #1a45c2, #2f73f5); color: #fff; border-radius: var(--r-xl); padding: 0; text-align: center; margin-bottom: 22px; box-shadow: 0 12px 40px rgba(29,78,216,0.35); overflow: hidden; }
+
+/* Expiry countdown bar */
+.qris-expiry-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 18px; background: rgba(0,0,0,0.18);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.76rem; font-weight: 700;
+}
+.qris-expiry-bar.qris-expiry-expired {
+  background: rgba(239,68,68,0.25); display: flex; align-items: center; justify-content: center;
+  gap: 6px; color: #fca5a5; font-size: 0.78rem;
+}
+.qris-expiry-info { display: flex; align-items: center; gap: 5px; opacity: 0.88; }
+.qris-expiry-digits { display: flex; align-items: center; gap: 3px; }
+.qris-digit-box {
+  background: rgba(0,0,0,0.28); border-radius: 5px; padding: 3px 7px;
+  font-family: var(--font-mono); font-size: 1rem; font-weight: 900;
+  min-width: 26px; text-align: center;
+}
+.qris-digit-sep { font-size: 1rem; font-weight: 900; opacity: 0.7; margin: 0 1px; }
+
+/* Card body */
+.qris-blue-header-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px 4px; }
+.qris-blue-title { font-size: 1.1rem; font-weight: 900; margin-bottom: 3px; font-family: var(--font-display); }
+.qris-blue-nmid { font-size: 0.68rem; opacity: 0.78; margin-bottom: 16px; font-weight: 600; letter-spacing: 0.02em; }
+.qris-blue-qr-wrap { background: #fff; padding: 12px; border-radius: 12px; display: inline-block; width: calc(100% - 32px); max-width: 230px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+.qris-blue-qr-wrap img { width: 100%; display: block; border-radius: 4px; }
+.qris-blue-total { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: rgba(0,0,0,0.15); border-top: 1px solid rgba(255,255,255,0.15); margin-bottom: 0; font-weight: 800; font-size: 0.95rem; }
+
+/* QRIS action buttons */
+.qris-btn-cancel {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--r-full); height: 44px; font-size: 0.82rem; font-weight: 700;
+  transition: all 0.2s; margin: 0;
+}
+.qris-btn-cancel:hover { background: rgba(239,68,68,0.3); border-color: rgba(239,68,68,0.5); color: #fff; }
+.qris-btn-download {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: #fff; color: #1d4ed8; border: none;
+  border-radius: var(--r-full); height: 44px; font-size: 0.82rem; font-weight: 800;
+  transition: all 0.2s; box-shadow: 0 2px 12px rgba(0,0,0,0.15); margin: 0;
+}
+.qris-btn-download:hover { background: #e0eaff; transform: translateY(-1px); }
+/* wrapper for buttons inside blue card */
+.qris-blue-card > div:has(.qris-btn-cancel) { padding: 12px 18px; }
+.qris-scan-hint { font-size: 0.68rem; opacity: 0.65; padding-bottom: 14px; font-weight: 600; letter-spacing: 0.01em; }
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav {
+  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+  width: calc(100% - 28px); max-width: 440px; height: 72px;
+  background: var(--glass); backdrop-filter: blur(22px);
+  border: 1px solid var(--border2); border-radius: var(--r-full);
+  display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 100;
+  box-shadow: var(--card-shadow-lg);
+  transition: background 0.3s, border-color 0.3s;
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  padding: 7px 3px; border-radius: var(--r-md); font-size: 0.6rem; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); transition: all 0.22s var(--ease-out);
+}
+.nav-item:hover { color: var(--text-2); }
+.nav-item.active { color: var(--blue2); }
+.nav-item.active .nav-icon-wrap { background: var(--blue-soft); color: var(--blue2); border-radius: var(--r-full); transform: translateY(-4px); box-shadow: 0 4px 16px var(--blue-glow); }
+.nav-icon-wrap { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; transition: all 0.22s var(--ease-out); }
+
+/* ===== DEPOSIT / TOP UP ===== */
+.deposit-wrap { display: flex; flex-direction: column; gap: 0; }
+.deposit-card {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--r-xl); padding: 18px;
+  box-shadow: var(--card-shadow);
+}
+
+/* Top Up active QRIS layout */
+.qris-topup-wrap { display: flex; flex-direction: column; gap: 12px; animation: slideUp 0.35s var(--ease-out) both; }
+
+/* Summary card below QRIS blue card */
+.qris-summary-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl);
+  padding: 16px 18px; box-shadow: var(--card-shadow); display: flex; flex-direction: column; gap: 0;
+}
+.qris-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  font-size: 0.83rem; font-weight: 700; color: var(--text-2);
+}
+.qris-summary-row:last-of-type { border-bottom: none; }
+.qris-summary-total { font-weight: 900; color: var(--blue2) !important; font-size: 0.9rem; }
+.qris-summary-total span { color: var(--blue2) !important; }
+.qris-cek-btn {
+  width: 100%; margin-top: 12px; border-radius: var(--r-full) !important;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 48px; font-size: 0.88rem; font-weight: 800;
+}
+.deposit-amounts { 
+  display: grid; grid-template-columns: repeat(3, 1fr); 
+  gap: 10px; margin-bottom: 18px; 
+}
+.amount-chip { 
+  background: var(--glass); border: 1px solid var(--border); 
+  border-radius: var(--r-md); padding: 12px 6px; text-align: center; 
+  font-size: 0.82rem; font-weight: 800; color: var(--text-2); 
+  cursor: pointer; transition: all 0.2s; 
+}
+.amount-chip:hover { background: var(--blue-soft); border-color: var(--border-blue); color: var(--blue2); transform: translateY(-1px); }
+.amount-chip.active { background: var(--blue-soft); border-color: var(--border-blue2); color: var(--blue2); box-shadow: 0 0 0 2px var(--blue-soft); }
+
+.qris-card {
+  background: var(--qris-bg, #fff); border-radius: var(--r-xl);
+  padding: 12px; margin: 0 auto 10px;
+  width: 100%; max-width: 220px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  border: 1px solid var(--border);
+}
+.qris-card img { width: 100%; height: auto; display: block; border-radius: 8px; }
+.qris-amount {
+  font-family: var(--font-mono); font-size: 1.5rem; font-weight: 900;
+  color: var(--text); text-align: center; margin-bottom: 4px;
+}
+.qris-cancel-btn {
+  width: 100%; margin-top: 10px;
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--text-3); padding: 11px; border-radius: var(--r-full);
+  font-size: 0.82rem; font-weight: 700; cursor: pointer;
+  transition: all 0.2s;
+}
+.qris-cancel-btn:hover { background: var(--red-soft); border-color: rgba(220,38,38,0.3); color: var(--red); }
+
+/* ===== PPOB MAINTENANCE ===== */
+.maintenance-box {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 36px 18px; text-align: center; background: var(--glass);
+  border: 1px solid var(--border); border-radius: var(--r-xl); margin-top: 18px;
+  box-shadow: var(--card-shadow);
+}
+.maintenance-box svg { color: var(--amber); width: 50px; height: 50px; margin-bottom: 14px; }
+.maintenance-box h3 { font-family: var(--font-display); font-size: 1.28rem; font-weight: 900; color: var(--text); margin-bottom: 7px; }
+.maintenance-box p { font-size: 0.86rem; color: var(--text-3); font-weight: 500; margin-bottom: 22px; line-height: 1.5; }
+
+/* ===== PROFILE ===== */
+.profile-wrap { display: flex; flex-direction: column; gap: 14px; }
+.profile-section {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--r-xl); overflow: hidden; box-shadow: var(--card-shadow);
+}
+.profile-section-title {
+  display: flex; align-items: center; gap: 7px;
+  padding: 12px 16px; font-size: 0.78rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2);
+  border-bottom: 1px solid var(--border); background: var(--glass2);
+}
+.profile-section-body { padding: 16px; }
+
+/* ===== MODAL OVERLAY for operator ===== */
+.modal-overlay .modal-content { max-height: 72vh; overflow-y: auto; }
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 44px 18px; text-align: center; color: var(--text-3);
+}
+.empty-state .icon { font-size: 2.3rem; margin-bottom: 11px; opacity: 0.65; }
+.empty-state p { font-size: 0.86rem; font-weight: 600; color: var(--text-3); line-height: 1.5; }
+
+/* ===== CANCEL NOTIFICATION OVERLAY ===== */
+.cancel-notif-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,0.72); backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeInBg 0.25s ease both;
+}
+@keyframes fadeInBg { from { opacity: 0; } to { opacity: 1; } }
+
+.cancel-notif-card {
+  position: relative; text-align: center; padding: 48px 40px 40px;
+  animation: cancelCardPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes cancelCardPop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.cancel-notif-ripple {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 80px; height: 80px; border-radius: 50%;
+  border: 2px solid rgba(239,68,68,0.6);
+  animation: rippleOut 1.2s ease-out infinite;
+}
+.cancel-notif-ripple.delay { animation-delay: 0.5s; }
+@keyframes rippleOut {
+  0% { transform: translate(-50%,-50%) scale(1); opacity: 0.7; }
+  100% { transform: translate(-50%,-50%) scale(3); opacity: 0; }
+}
+
+.cancel-notif-icon {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(145deg, #7f1d1d, #ef4444);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 22px; position: relative; z-index: 2;
+  animation: receiptCancelShake 0.6s cubic-bezier(.36,.07,.19,.97) 0.3s both,
+             cancelIconBounce 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+  box-shadow: 0 0 40px rgba(239,68,68,0.5);
+}
+.cancel-notif-icon svg { width: 36px; height: 36px; stroke-width: 3.5; }
+@keyframes cancelIconBounce {
+  from { transform: scale(0.3); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.cancel-notif-title {
+  font-family: var(--font-display); font-size: 1.5rem; font-weight: 900;
+  color: #fff; margin-bottom: 8px;
+  animation: fadeInUp 0.4s ease 0.3s both;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.3);
+}
+.cancel-notif-subtitle {
+  font-size: 0.88rem; color: rgba(255,255,255,0.72); font-weight: 600;
+  animation: fadeInUp 0.4s ease 0.4s both;
+}
+.cancel-notif-amount {
+  font-family: var(--font-mono); font-size: 1.35rem; font-weight: 900;
+  color: rgba(255,255,255,0.9); margin-top: 14px;
+  animation: fadeInUp 0.4s ease 0.45s both;
+  background: rgba(255,255,255,0.1); padding: 8px 22px;
+  border-radius: var(--r-full); display: inline-block;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+@keyframes receiptCancelShake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  12% { transform: translateX(-7px) rotate(-5deg); }
+  25% { transform: translateX(7px) rotate(5deg); }
+  37% { transform: translateX(-5px) rotate(-3deg); }
+  50% { transform: translateX(5px) rotate(3deg); }
+  62% { transform: translateX(-3px) rotate(-1deg); }
+  75% { transform: translateX(3px) rotate(1deg); }
+  87% { transform: translateX(-1px); }
+}
+@keyframes receiptSuccessBounce {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.18); }
+  80% { transform: scale(0.94); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes receiptPulseWait {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* ===== UTILS ===== */
+.text-green { color: var(--green); }
+.text-red { color: var(--red); }
+.text-amber { color: var(--amber); }
+.text-blue { color: var(--blue2); }
+.text-cyan { color: var(--cyan); }
+.text-muted { color: var(--text-3); }
+.text-mono { font-family: var(--font-mono); }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+
+::-webkit-scrollbar { width: 0px; background: transparent; }
