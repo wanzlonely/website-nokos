@@ -2003,4 +2003,85 @@ export default function Page() {
 
               return (
                 <div key={c.number_id || c.name} className="country-wrapper">
-                  <div className={`country-item ${isExpanded ? 'selected' : ''}
+                  <div className={`country-item ${isExpanded ? 'selected' : ''}`} onClick={() => setExpandedCountry(isExpanded ? null : c.number_id)}>
+                    <span className="country-flag">{getFlag(c.name)}</span>
+                    <span className="country-name">{c.name}</span>
+                    <div className="country-right">
+                      <div className="country-price">Mulai {fmt(c.available[0]?.price)}</div>
+                      <div className={`country-stock ${totalStock > 3 ? 'text-green' : totalStock > 0 ? 'text-amber' : 'text-red'}`}>
+                        {totalStock > 0 ? `${totalStock} server` : 'Habis'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="provider-list">
+                      {c.available.map(prov => (
+                        <div key={prov.provider_id} className="provider-item">
+                          <div className="provider-info">
+                            <span className="provider-id">ID: {prov.provider_id}</span>
+                            <span className="provider-price">{fmt(prov.price)}</span>
+                          </div>
+                          <button className="btn-order" disabled={loadingOperators} onClick={() => handleOrderClick(c, prov)}>
+                            {loadingOperators && selectedOrderContext?.provider?.provider_id === prov.provider_id ? <LoadingSpinner style={{ width: 14, height: 14, borderWidth: 2 }} /> : 'Pilih'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ===== GENERIC CONFIRM MODAL ===== */}
+      {modal.show && (
+        <div className="modal-overlay open" onClick={closeModal}>
+          <div className="modal-content popIn" onClick={e => e.stopPropagation()} style={{ padding: '28px 24px' }}>
+            <div className={`modal-svg-wrap ${modal.type}`}>
+              {modal.type === 'warning' && <IconWarning />}
+              {modal.type === 'error' && <IconCross />}
+              {modal.type === 'success' && <IconCheck />}
+              {modal.type === 'info' && <span style={{ fontSize: '1.4rem' }}>ℹ️</span>}
+            </div>
+            <h3 style={{ textAlign: 'center', marginBottom: 8 }}>{modal.title}</h3>
+            <p style={{ textAlign: 'center' }}>{modal.msg}</p>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={closeModal}>Batal</button>
+              {modal.onConfirm && (
+                <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => { modal.onConfirm(); closeModal(); }}>Lanjutkan</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== OPERATOR SELECTION MODAL ===== */}
+      <div className={`modal-overlay ${showOperatorModal ? 'open' : ''}`} onClick={() => setShowOperatorModal(false)}>
+        <div className={`modal-content ${showOperatorModal ? 'popIn' : ''}`} onClick={e => e.stopPropagation()} style={{ padding: '24px' }}>
+          <h3 style={{ marginBottom: '16px', fontSize: '1.15rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Pilih Operator</h3>
+          {loadingOperators ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
+              <LoadingSpinner />
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>Memuat daftar operator...</span>
+            </div>
+          ) : (
+            <div className="operator-grid">
+              {operators.map(op => (
+                <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op)}>
+                  <OperatorIcon name={op.name} />
+                  <span>{op.name === 'any' ? 'Any / Semua' : op.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <button className="btn btn-secondary" style={{ marginTop: 16, width: '100%', height: 44, borderRadius: 'var(--r-full)' }} onClick={() => setShowOperatorModal(false)}>
+            Batal
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
