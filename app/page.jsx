@@ -84,40 +84,44 @@ const formatTime = secs => {
   return `${m}:${s}`;
 };
 
-function EyeToggle({ show, onToggle }) {
-  return (
-    <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
-      {show ? '🙈' : '👁️'}
-    </button>
-  );
-}
-
 function LoadingSpinner() {
   return <div className="loading-spinner" />;
 }
 
-const SvgProduct = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-);
-const SvgPPOB = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 4h2a8 8 0 018 8v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3a2 2 0 00-2-2H9a2 2 0 00-2 2v3a2 2 0 01-2 2H3a2 2 0 01-2-2v-4a8 8 0 018-8zm-2 7h.01M8 11h.01M16 10h.01M16 12h.01M15 11h.01M17 11h.01"></path></svg>
-);
-const SvgTopUp = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-);
-const SvgProfile = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-);
+const IconSun = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>;
+const IconMoon = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
+const IconEdit = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+const IconLogin = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>;
+const IconMail = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
+const IconSend = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
+const IconRefresh = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>;
+const IconCheckCircle = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+const IconLock = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+const IconSave = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
+const IconLogout = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+const IconCart = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>;
+const IconCopy = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
+const IconQR = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
+const IconEye = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+const IconEyeOff = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>;
 
-const IconCheck = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
-);
-const IconCross = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
-);
-const IconWarning = () => (
-  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-);
+const SvgProduct = () => <svg fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>;
+const SvgPPOB = () => <svg fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4M15 13h.01M18 11h.01"/></svg>;
+const SvgTopUp = () => <svg fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><path d="M2 10h20"/></svg>;
+const SvgProfile = () => <svg fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+
+const IconCheck = () => <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>;
+const IconCross = () => <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>;
+const IconWarning = () => <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>;
+const IconInfo = () => <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>;
+
+function EyeToggle({ show, onToggle }) {
+  return (
+    <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
+      {show ? <IconEyeOff /> : <IconEye />}
+    </button>
+  );
+}
 
 export default function Page() {
   const [theme, setTheme] = useState('dark');
@@ -201,7 +205,9 @@ export default function Page() {
   };
 
   useEffect(() => {
+    let active = true;
     api('balance').then(r => {
+      if (!active) return;
       if (r.success) {
         setUser({ email: r.data.email });
         setBalance(r.data.balance);
@@ -212,6 +218,7 @@ export default function Page() {
         setStep('welcome');
       }
     });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -323,7 +330,7 @@ export default function Page() {
     const check = await api('check_email', { email });
     if (!check.exists) {
       setBusy(false);
-      showModal('error', 'Email Tidak Ditemukan', 'Email ini belum terdaftar. Silakan buat akun baru terlebih dahulu.');
+      showModal('warning', 'Tidak Terdaftar', 'Email ini belum terdaftar. Silakan buat akun baru terlebih dahulu.');
       return;
     }
     sendOtp(email, 'reset');
@@ -366,7 +373,7 @@ export default function Page() {
         }
       }
     } else {
-      showModal('error', 'Verifikasi Gagal', r.msg || 'Kode OTP salah atau sudah expired.');
+      showModal('error', 'Gagal', r.msg || 'Kode OTP salah atau sudah expired.');
     }
   };
 
@@ -391,18 +398,19 @@ export default function Page() {
   };
 
   const loginWithPassword = async () => {
-    if (!identifier || !pwInput) return;
+    if (!identifier || !pwInput || busy) return;
     setBusy(true);
     const r = await authApi('login-password', { identifier, password: pwInput });
-    setBusy(false);
     if (r.success) {
       setUser(r.user);
       setBalance(r.user.balance);
       setUsername(r.user.username);
       setHasPassword(true);
       setStep('app');
+      setBusy(false);
     } else {
-      showModal('error', 'Login Gagal', r.msg || 'Username/Email atau password salah.');
+      setBusy(false);
+      showModal('error', 'Akses Ditolak', r.msg || 'Username/Email atau password salah.');
     }
   };
 
@@ -469,9 +477,9 @@ export default function Page() {
     } else {
       if (r.msg && r.msg.toLowerCase().includes('tidak cukup')) {
         setShowSheet(false);
-        showModal('warning', 'Saldo Tidak Cukup!', 'Saldo kamu kurang untuk membeli nomor ini. Yuk top up dulu agar bisa bertransaksi dengan lancar.', () => setTab('deposit'));
+        showModal('warning', 'Saldo Tidak Cukup!', 'Saldo kamu kurang untuk transaksi ini. Silakan top up agar bisa bertransaksi dengan lancar.', () => setTab('deposit'));
       } else {
-        showModal('error', 'Transaksi Gagal', r.msg || 'Gagal membeli nomor dari server.');
+        showModal('error', 'Gagal Membeli', r.msg || 'Gagal terhubung ke server.');
       }
     }
   };
@@ -496,7 +504,7 @@ export default function Page() {
       setQrisData({ ...r.data, actual_amount: actualAmt });
       setDepositCooldown(120);
     } else {
-      showModal('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
+      showModal('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali nominal.');
     }
   };
 
@@ -509,9 +517,9 @@ export default function Page() {
       setBalance(r.new_balance);
       setQrisData(null);
       setDepositAmount('');
-      showModal('success', 'Pembayaran Diterima', 'Deposit berhasil masuk ke saldo kamu!');
+      showModal('success', 'Pembayaran Masuk', 'Deposit berhasil ditambahkan ke saldo kamu!');
     } else {
-      showModal('warning', 'Belum Terdeteksi', 'Pembayaran belum masuk. Tunggu beberapa saat dan cek kembali.');
+      showModal('warning', 'Menunggu', 'Pembayaran belum terdeteksi. Silakan coba lagi beberapa saat.');
     }
   };
 
@@ -520,7 +528,6 @@ export default function Page() {
     setCancelingDeposit(true);
     await api('deposit_cancel', { deposit_id: qrisData.id });
     setCancelingDeposit(false);
-    
     setQrisData(null); 
     setDepositAmount(''); 
     showModal('success', 'Dibatalkan', 'Transaksi pembayaran berhasil dibatalkan.');
@@ -531,7 +538,7 @@ export default function Page() {
     const r = await api('profile_update', { username });
     setSavingProfile(false);
     if (r.success) {
-      showModal('success', 'Berhasil', r.msg);
+      showModal('success', 'Tersimpan', r.msg);
     } else {
       showModal('error', 'Gagal', r.msg);
     }
@@ -545,7 +552,7 @@ export default function Page() {
     if (r.success) {
       setHasPassword(true);
       setCurPass(''); setProfileNewPass(''); setProfileConfirmPass('');
-      showModal('success', 'Berhasil', r.msg || 'Password berhasil disimpan');
+      showModal('success', 'Berhasil', r.msg || 'Password baru berhasil disimpan');
     } else {
       showModal('error', 'Gagal', r.msg);
     }
@@ -575,17 +582,17 @@ export default function Page() {
     return (
       <div className="auth-screen welcome-bg">
         <div className="welcome-wrapper floating">
-          <div className="auth-logo-badge"><div className="auth-logo-dot" /><span>SISTEM ONLINE</span></div>
-          <h1 className="logo-title">WALZ<br/><span className="text-cyan">NEXUS</span></h1>
-          <p className="logo-subtitle">LAYANAN DIGITAL PREMIUM</p>
+          <div className="status-badge"><span className="status-dot"></span> SISTEM ONLINE</div>
+          <h1 className="logo-title">WALZ<br/><span>NEXUS</span></h1>
+          <p className="logo-subtitle">Layanan Digital Premium</p>
         </div>
         
         <div className="welcome-card">
           <button className="btn btn-primary" onClick={() => setStep('register')} style={{ height: 60, fontSize: '1.05rem', borderRadius: 'var(--r-full)' }}>
-            📝 Buat Akun Baru
+            <IconEdit /> Buat Akun Baru
           </button>
           <button className="btn btn-secondary" onClick={() => setStep('login')} style={{ height: 60, fontSize: '1.05rem', marginBottom: 0, borderRadius: 'var(--r-full)' }}>
-            🔑 Masuk ke Akun
+            <IconLogin /> Masuk ke Akun
           </button>
         </div>
       </div>
@@ -613,7 +620,7 @@ export default function Page() {
             </div>
           </div>
           <button className="btn btn-primary" onClick={loginWithPassword} disabled={!identifier || !pwInput || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
-            {busy ? <><LoadingSpinner /> Memproses...</> : '🔑 Masuk Sekarang'}
+            {busy ? <><LoadingSpinner /> Memproses...</> : <><IconLogin /> Masuk Sekarang</>}
           </button>
           <button className="btn-ghost" onClick={() => setStep('forgot')} style={{ color: 'var(--blue2)', marginBottom: 8 }}>
             Lupa Password?
@@ -631,7 +638,7 @@ export default function Page() {
       <div className="auth-screen welcome-bg">
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
-          <div className="auth-card-title">Daftar Akun Baru 🚀</div>
+          <div className="auth-card-title">Daftar Akun Baru</div>
           <div className="auth-card-sub">Masukkan email aktif untuk menerima kode verifikasi</div>
           <div className="input-field">
             <label>Alamat Email</label>
@@ -640,7 +647,7 @@ export default function Page() {
               onKeyDown={e => e.key === 'Enter' && !busy && email && sendOtp(email, 'register')} />
           </div>
           <button className="btn btn-primary" onClick={() => sendOtp(email, 'register')} disabled={!email || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
-            {busy ? <><LoadingSpinner /> Mengirim...</> : '✉️ Kirim Kode OTP'}
+            {busy ? <><LoadingSpinner /> Mengirim...</> : <><IconMail /> Kirim Kode OTP</>}
           </button>
           <button className="btn-ghost" onClick={() => { setStep('welcome'); setEmail(''); }}>
             ← Batal
@@ -657,7 +664,7 @@ export default function Page() {
       <div className="auth-screen welcome-bg">
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
-          <div className="auth-card-title">Verifikasi OTP 📬</div>
+          <div className="auth-card-title">Verifikasi OTP</div>
           <div className="otp-info">Kode dikirim ke <strong>{email}</strong></div>
           <div className={`timer-bar ${timerClass}`}>
             <span className="timer-label">{countdown > 0 ? 'Kode berlaku' : 'Kode expired'}</span>
@@ -672,10 +679,10 @@ export default function Page() {
               disabled={countdown === 0} />
           </div>
           <button className="btn btn-primary" onClick={verifyOtp} disabled={otpCode.length !== 6 || busy || countdown === 0} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner /> Verifikasi...</> : '✅ Verifikasi OTP'}
+            {busy ? <><LoadingSpinner /> Verifikasi...</> : <><IconCheckCircle /> Verifikasi OTP</>}
           </button>
           <button className="btn btn-secondary" onClick={() => sendOtp(email, isReset ? 'reset' : 'register')} disabled={busy || countdown > 0} style={{ borderRadius: 'var(--r-full)' }}>
-            {countdown > 0 ? `Kirim Ulang (${formatTime(countdown)})` : '🔄 Kirim Ulang OTP'}
+            {countdown > 0 ? `Kirim Ulang (${formatTime(countdown)})` : <><IconRefresh /> Kirim Ulang OTP</>}
           </button>
           <button className="btn-ghost" onClick={() => { setStep(isReset ? 'forgot' : 'register'); setOtpCode(''); }}>
             ← Ganti Email
@@ -692,7 +699,7 @@ export default function Page() {
       <div className="auth-screen welcome-bg">
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
-          <div className="auth-card-title">Lengkapi Profil ✍️</div>
+          <div className="auth-card-title">Lengkapi Profil</div>
           <div className="auth-card-sub">Buat username unik dan password agar kedepannya bisa langsung login tanpa OTP.</div>
           <div className="input-field">
             <label>Username</label>
@@ -712,10 +719,10 @@ export default function Page() {
               <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
             </div>
           </div>
-          {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
-          {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
+          {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>Password tidak cocok</p>}
+          {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>Password cocok</p>}
           <button className="btn btn-primary" onClick={completeSetup} disabled={!isValid || busy} style={{ height: 54, borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner /> Menyimpan...</> : '🚀 Mulai Gunakan Aplikasi'}
+            {busy ? <><LoadingSpinner /> Menyimpan...</> : 'Mulai Gunakan Aplikasi'}
           </button>
         </div>
       </div>
@@ -727,14 +734,14 @@ export default function Page() {
       <div className="auth-screen welcome-bg">
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
-          <div className="auth-card-title">Lupa Password 🔒</div>
+          <div className="auth-card-title">Lupa Password</div>
           <div className="auth-card-sub">Masukkan email akun kamu yang pernah terdaftar untuk reset password.</div>
           <div className="input-field">
             <label>Email Terdaftar</label>
             <input type="email" value={email} placeholder="nama@email.com" onChange={e => setEmail(e.target.value)} />
           </div>
           <button className="btn btn-primary" onClick={handleForgotCheck} disabled={!email || busy} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner /> Memeriksa...</> : '📩 Lanjutkan'}
+            {busy ? <><LoadingSpinner /> Memeriksa...</> : <><IconSend /> Lanjutkan</>}
           </button>
           <button className="btn-ghost" onClick={() => setStep('login')}>
             ← Batal
@@ -751,7 +758,7 @@ export default function Page() {
       <div className="auth-screen welcome-bg">
         <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
-          <div className="auth-card-title">Password Baru 🔐</div>
+          <div className="auth-card-title">Password Baru</div>
           <div className="auth-card-sub">Buat password baru untuk akun kamu</div>
           <div className="input-field">
             <label>Password Baru</label>
@@ -767,10 +774,10 @@ export default function Page() {
               <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
             </div>
           </div>
-          {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
-          {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
+          {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>Password tidak cocok</p>}
+          {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>Password cocok</p>}
           <button className="btn btn-primary" onClick={resetPassword} disabled={!isValid || busy} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner /> Menyimpan...</> : '💾 Simpan Password'}
+            {busy ? <><LoadingSpinner /> Menyimpan...</> : <><IconSave /> Simpan Password</>}
           </button>
         </div>
       </div>
@@ -786,7 +793,7 @@ export default function Page() {
             <div className="header-title">WALZ <span>NEXUS</span></div>
           </div>
           <button className="theme-toggle" onClick={toggleTheme} title="Ganti Tema">
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === 'dark' ? <IconSun /> : <IconMoon />}
           </button>
         </div>
         <div className="balance-card">
@@ -807,7 +814,7 @@ export default function Page() {
               {!loadingSvcs && <span className="count">{filteredSvcs.length} layanan</span>}
             </div>
             <div className="search-wrap">
-              <span className="search-icon">⌕</span>
+              <span className="search-icon"><svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
               <input value={query} placeholder="Cari layanan..." onChange={e => setQuery(e.target.value)} />
             </div>
             {loadingSvcs ? (
@@ -817,7 +824,7 @@ export default function Page() {
               </div>
             ) : filteredSvcs.length === 0 ? (
               <div className="empty-state">
-                <span className="icon">🔍</span>
+                <span className="icon"><svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
                 <p>Tidak ada layanan ditemukan</p>
               </div>
             ) : (
@@ -843,13 +850,13 @@ export default function Page() {
           <div className="order-view">
             <div className="order-header">
               <button className="back-btn" onClick={() => setOrder(null)}>← Beli Lagi</button>
-              <button className="back-btn" onClick={() => api('balance').then(r => r.success && setBalance(r.data.balance))}>🔄 Refresh Saldo</button>
+              <button className="back-btn" onClick={() => api('balance').then(r => r.success && setBalance(r.data.balance))}><IconRefresh /> Refresh Saldo</button>
             </div>
             <div className="order-card">
               <div className="number-block" onClick={() => navigator.clipboard.writeText(order.phone_number)}>
                 <div className="number-block-svc">{order.service_name}</div>
                 <div className="number-block-num">{order.phone_number}</div>
-                <div className="number-block-copy">📋 Tap untuk salin</div>
+                <div className="number-block-copy"><IconCopy /> Tap untuk salin</div>
                 <div className="number-block-price">{fmt(order.price)}</div>
               </div>
               <div className="otp-block">
@@ -860,12 +867,12 @@ export default function Page() {
                     </div>
                     <p>Menunggu SMS masuk...<br />Gunakan nomor di atas untuk verifikasi</p>
                     <button className="btn btn-primary" onClick={checkSms} disabled={checkingSms} style={{ width: '100%', borderRadius: 'var(--r-full)' }}>
-                      {checkingSms ? <><LoadingSpinner /> Mengecek...</> : '🔄 Cek SMS'}
+                      {checkingSms ? <><LoadingSpinner /> Mengecek...</> : <><IconRefresh /> Cek SMS</>}
                     </button>
                   </div>
                 ) : (
                   <div className="otp-received">
-                    <div className="otp-received-label">✅ SMS Diterima</div>
+                    <div className="otp-received-label"><IconCheckCircle /> SMS Diterima</div>
                     <div className="otp-code-box">
                       <div className="otp-code-val">{order.otp_code}</div>
                     </div>
@@ -891,12 +898,12 @@ export default function Page() {
                  </div>
                  <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 8, marginTop: 16 }}>Sistem Maintenance</h3>
                  <p style={{ textAlign: 'center', padding: '0 20px' }}>{ppobError}<br/>Silakan coba lagi nanti.</p>
-                 <button className="btn btn-secondary mt-16" onClick={fetchPpob} style={{ width: 'auto', borderRadius: 'var(--r-full)' }}>🔄 Cek Kembali</button>
+                 <button className="btn btn-secondary mt-16" onClick={fetchPpob} style={{ width: 'auto', borderRadius: 'var(--r-full)' }}><IconRefresh /> Cek Kembali</button>
                </div>
             ) : (
               <>
                 <div className="search-wrap">
-                  <span className="search-icon">⌕</span>
+                  <span className="search-icon"><svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
                   <input value={ppobQuery} placeholder="Cari nama atau brand produk..." onChange={e => setPpobQuery(e.target.value)} />
                 </div>
                 {ppobLoading ? (
@@ -906,7 +913,7 @@ export default function Page() {
                   </div>
                 ) : filteredPpob.length === 0 ? (
                   <div className="empty-state">
-                    <span className="icon">🔍</span>
+                    <span className="icon"><svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
                     <p>Tidak ada produk ditemukan</p>
                   </div>
                 ) : (
@@ -944,7 +951,7 @@ export default function Page() {
                   ))}
                 </div>
                 <button className="btn btn-primary" onClick={createQris} disabled={!depositAmount || Number(depositAmount) <= 0 || creatingQris || depositCooldown > 0} style={{ marginTop: 12, borderRadius: 'var(--r-full)' }}>
-                  {creatingQris ? <><LoadingSpinner /> Membuat QRIS...</> : depositCooldown > 0 ? `Tunggu ${formatTime(depositCooldown)}` : '📲 Buat QRIS Pembayaran'}
+                  {creatingQris ? <><LoadingSpinner /> Membuat QRIS...</> : depositCooldown > 0 ? `Tunggu ${formatTime(depositCooldown)}` : <><IconQR /> Buat QRIS Pembayaran</>}
                 </button>
               </div>
             ) : (
@@ -957,10 +964,10 @@ export default function Page() {
                 </div>
                 <div className="qris-amount">{fmt(qrisData.actual_amount)}</div>
                 <button className="btn btn-success" onClick={checkDeposit} disabled={checkingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
-                  {checkingDeposit ? <><LoadingSpinner /> Mengecek...</> : '✅ Cek Status Pembayaran'}
+                  {checkingDeposit ? <><LoadingSpinner /> Mengecek...</> : <><IconCheckCircle /> Cek Status Pembayaran</>}
                 </button>
                 <button className="btn btn-danger" onClick={cancelDeposit} disabled={cancelingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
-                  {cancelingDeposit ? <><LoadingSpinner /> Membatalkan...</> : '✖ Batalkan Transaksi'}
+                  {cancelingDeposit ? <><LoadingSpinner /> Membatalkan...</> : <><IconCross /> Batalkan Transaksi</>}
                 </button>
               </div>
             )}
@@ -991,7 +998,7 @@ export default function Page() {
                   <input type="email" value={user?.email || ''} disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} />
                 </div>
                 <button className="btn btn-primary mt-16" onClick={saveProfile} disabled={savingProfile} style={{ borderRadius: 'var(--r-full)' }}>
-                  {savingProfile ? <><LoadingSpinner /> Menyimpan...</> : '💾 Simpan Profil'}
+                  {savingProfile ? <><LoadingSpinner /> Menyimpan...</> : <><IconSave /> Simpan Profil</>}
                 </button>
               </div>
             </div>
@@ -999,7 +1006,7 @@ export default function Page() {
             <div className="profile-section">
               <div className="profile-section-title">
                 <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                  <IconLock />
                 </span> {hasPassword ? 'Ganti Password' : 'Atur Password'}
               </div>
               <div className="profile-section-body">
@@ -1025,16 +1032,18 @@ export default function Page() {
                     <input type={showNewPass ? 'text' : 'password'} value={profileConfirmPass} placeholder="Ulangi password baru" onChange={e => setProfileConfirmPass(e.target.value)} />
                   </div>
                 </div>
-                {profileConfirmPass && profileNewPass !== profileConfirmPass && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
+                {profileConfirmPass && profileNewPass !== profileConfirmPass && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>Password tidak cocok</p>}
                 <button className="btn btn-primary" onClick={savePassword} disabled={savingPass || profileNewPass.length < 6 || profileNewPass !== profileConfirmPass || (hasPassword && !curPass)} style={{ borderRadius: 'var(--r-full)' }}>
-                  {savingPass ? <><LoadingSpinner /> Menyimpan...</> : '🔐 Simpan Password'}
+                  {savingPass ? <><LoadingSpinner /> Menyimpan...</> : <><IconLock /> Simpan Password</>}
                 </button>
               </div>
             </div>
 
             <div className="profile-section">
               <div className="profile-section-body">
-                <button className="btn btn-danger" onClick={logout} style={{ marginBottom: 0, borderRadius: 'var(--r-full)' }}>🚪 Keluar dari Akun</button>
+                <button className="btn btn-danger" onClick={logout} style={{ marginBottom: 0, borderRadius: 'var(--r-full)' }}>
+                  <IconLogout /> Keluar dari Akun
+                </button>
               </div>
             </div>
             <div style={{ height: 16 }} />
@@ -1086,7 +1095,7 @@ export default function Page() {
             </div>
           ) : filteredCountries.length === 0 ? (
             <div className="empty-state" style={{ padding: '32px 0' }}>
-              <span className="icon">🌐</span>
+              <span className="icon"><svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
               <p>Tidak ada stok untuk pencarian tersebut</p>
             </div>
           ) : (
@@ -1112,7 +1121,7 @@ export default function Page() {
         {selectedCountry && (
           <div className="sheet-footer">
             <button className="btn btn-primary" onClick={buyNumber} disabled={ordering} style={{ borderRadius: 'var(--r-full)' }}>
-              {ordering ? <><LoadingSpinner /> Memproses...</> : `🛒 Beli Nomor ${getFlag(selectedCountry.name)} ${fmt(selectedCountry.available[0]?.price)}`}
+              {ordering ? <><LoadingSpinner /> Memproses...</> : <><IconCart /> Beli Nomor {getFlag(selectedCountry.name)} {fmt(selectedCountry.available[0]?.price)}</>}
             </button>
           </div>
         )}
@@ -1124,12 +1133,12 @@ export default function Page() {
             {modal.type === 'success' && <IconCheck />}
             {modal.type === 'error' && <IconCross />}
             {modal.type === 'warning' && <IconWarning />}
-            {modal.type === 'info' && <span style={{ fontSize: '30px' }}>ℹ️</span>}
+            {modal.type === 'info' && <IconInfo />}
           </div>
           <h3>{modal.title}</h3>
           <p>{modal.msg}</p>
           <div className="modal-actions">
-            {modal.onConfirm && <button className="btn btn-secondary" onClick={closeModal} style={{ borderRadius: 'var(--r-full)' }}>Nanti Saja</button>}
+            {modal.onConfirm && <button className="btn btn-secondary" onClick={closeModal} style={{ borderRadius: 'var(--r-full)' }}>Batal</button>}
             <button className="btn btn-primary" onClick={() => { if(modal.onConfirm) modal.onConfirm(); closeModal(); }} style={{ borderRadius: 'var(--r-full)', marginBottom: 0 }}>
               {modal.onConfirm ? 'Lanjutkan' : 'Tutup'}
             </button>
