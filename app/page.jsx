@@ -94,25 +94,10 @@ const formatReceiptDate = (ts) => {
   return `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()}, ${d.getHours().toString().padStart(2,'0')}.${d.getMinutes().toString().padStart(2,'0')} WIB`;
 };
 
-const getOpInitials = (name) => {
-  if (!name || typeof name !== 'string') return 'AN';
-  const n = name.toLowerCase();
-  if(n === 'any') return 'AN';
-  if(n.includes('three') || n === '3') return '3';
-  if(n.includes('telkom')) return 'TE';
-  if(n.includes('im3') || n.includes('indosat')) return 'IM';
-  if(n.includes('smartfren')) return 'SM';
-  if(n.includes('axis')) return 'AX';
-  if(n.includes('xl')) return 'XL';
-  if(n.includes('bolt')) return 'BO';
-  if(n.includes('maroc')) return 'MT';
-  return name.substring(0, 2).toUpperCase();
-};
-
 function EyeToggle({ show, onToggle }) {
   return (
     <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
-      {show ? '🐵' : '🙈'}
+      {show ? '🐵' : 🙈''}
     </button>
   );
 }
@@ -204,7 +189,6 @@ export default function Page() {
 
   const [showOperatorModal, setShowOperatorModal] = useState(false);
   const [operators, setOperators] = useState([]);
-  const [loadingOperators, setLoadingOperators] = useState(false);
   const [selectedOrderContext, setSelectedOrderContext] = useState(null);
 
   const [order, setOrder] = useState(null);
@@ -216,7 +200,6 @@ export default function Page() {
   const [qrisData, setQrisData] = useState(null);
   const [creatingQris, setCreatingQris] = useState(false);
   const [cancelingDeposit, setCancelingDeposit] = useState(false);
-  const [depositCooldown, setDepositCooldown] = useState(0);
 
   const [curPass, setCurPass] = useState('');
   const [profileNewPass, setProfileNewPass] = useState('');
@@ -334,14 +317,6 @@ export default function Page() {
     }, 1000);
     return () => clearInterval(timerRef.current);
   }, [countdown]);
-
-  useEffect(() => {
-    if (depositCooldown <= 0) return;
-    const cd = setInterval(() => {
-      setDepositCooldown(prev => prev <= 1 ? 0 : prev - 1);
-    }, 1000);
-    return () => clearInterval(cd);
-  }, [depositCooldown]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -618,22 +593,20 @@ export default function Page() {
   const handleOrderClick = async (country, provider) => {
     setSelectedOrderContext({ country, provider });
     setShowOperatorModal(true);
-    setLoadingOperators(true);
     try {
       const r = await api('operators', { country: country.name, provider_id: provider.provider_id });
-      setLoadingOperators(false);
       if (r.success && Array.isArray(r.data) && r.data.length > 0) {
         setOperators([{ id: 'any', name: 'any' }, ...r.data]);
       } else {
         setOperators([{ id: 'any', name: 'any' }]);
       }
     } catch (e) {
-      setLoadingOperators(false);
       setOperators([{ id: 'any', name: 'any' }]);
     }
   };
 
-  const confirmOrder = async (operatorName) => {
+  const confirmOrder = async (operatorObj) => {
+    const operatorName = operatorObj.name;
     setShowOperatorModal(false);
     setOrderingProv(selectedOrderContext.provider.provider_id);
     showToast('info', 'Memproses', 'Membuat pesanan...');
@@ -690,7 +663,6 @@ export default function Page() {
       if (r.success && r.data) {
         const actualAmt = r.data.amount || r.data.total || depositAmount;
         setQrisData({ ...r.data, actual_amount: actualAmt });
-        setDepositCooldown(120);
       } else {
         showToast('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
       }
@@ -1233,13 +1205,11 @@ export default function Page() {
             </div>
             
             {ppobError ? (
-               <div className="empty-state" style={{ padding: '60px 0' }}>
-                 <div className="modal-icon text-amber" style={{ animation: 'none' }}>
-                    <IconWarning />
-                 </div>
-                 <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 8, marginTop: 16 }}>Sistem Maintenance</h3>
-                 <p style={{ textAlign: 'center', padding: '0 20px' }}>{ppobError}<br/>Silakan coba lagi nanti.</p>
-                 <button className="btn btn-secondary mt-16" onClick={fetchPpob} style={{ width: 'auto', borderRadius: 'var(--r-full)' }}>🔄 Cek Kembali</button>
+               <div className="maintenance-box">
+                 <IconWarning />
+                 <h3>Sistem Maintenance</h3>
+                 <p>{ppobError}<br/>Silakan coba lagi nanti.</p>
+                 <button className="btn btn-secondary" onClick={fetchPpob}>🔄 Cek Kembali</button>
                </div>
             ) : (
               <>
@@ -1286,8 +1256,8 @@ export default function Page() {
                     </button>
                   ))}
                 </div>
-                <button className="btn btn-primary" onClick={createQris} disabled={!depositAmount || Number(depositAmount) <= 0 || creatingQris || depositCooldown > 0} style={{ marginTop: 12, borderRadius: 'var(--r-full)' }}>
-                  {creatingQris ? <><LoadingSpinner style={{width:16, height:16}} /> Membuat QRIS...</> : depositCooldown > 0 ? `Tunggu ${formatTime(depositCooldown)}` : '📲 Buat QRIS Pembayaran'}
+                <button className="btn btn-primary" onClick={createQris} disabled={!depositAmount || Number(depositAmount) < 2000 || creatingQris} style={{ marginTop: 12, borderRadius: 'var(--r-full)' }}>
+                  {creatingQris ? <><LoadingSpinner style={{width:16, height:16}} /> Membuat QRIS...</> : '📲 Buat QRIS Pembayaran'}
                 </button>
               </div>
             ) : (
@@ -1302,9 +1272,6 @@ export default function Page() {
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginBottom: 16 }}>
                   Sistem mengecek pembayaran secara otomatis...
                 </div>
-                <button className="btn btn-danger" onClick={cancelDeposit} disabled={cancelingDeposit} style={{ borderRadius: 'var(--r-full)' }}>
-                  {cancelingDeposit ? <><LoadingSpinner style={{width:16, height:16}} /> Membatalkan...</> : '✖ Batalkan Transaksi'}
-                </button>
               </div>
             )}
           </div>
@@ -1374,11 +1341,11 @@ export default function Page() {
                   <label>Username</label>
                   <input type="text" value={username} placeholder="Nama unik tampilan" onChange={e => setUsername(e.target.value.replace(/\s/g, ''))} maxLength={30} />
                 </div>
-                <div className="input-field" style={{ marginBottom: 0 }}>
+                <div className="input-field">
                   <label>Email</label>
                   <input type="email" value={user?.email || ''} disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} />
                 </div>
-                <button className="btn btn-primary mt-16" onClick={saveProfile} disabled={savingProfile} style={{ borderRadius: 'var(--r-full)' }}>
+                <button className="btn btn-primary" onClick={saveProfile} disabled={savingProfile} style={{ borderRadius: 'var(--r-full)', marginTop: 8 }}>
                   {savingProfile ? <><LoadingSpinner style={{width:16, height:16}} /> Menyimpan...</> : '💾 Simpan Profil'}
                 </button>
               </div>
@@ -1414,7 +1381,7 @@ export default function Page() {
                   </div>
                 </div>
                 {profileConfirmPass && profileNewPass !== profileConfirmPass && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
-                <button className="btn btn-primary" onClick={savePassword} disabled={savingPass || profileNewPass.length < 6 || profileNewPass !== profileConfirmPass || (hasPassword && !curPass)} style={{ borderRadius: 'var(--r-full)' }}>
+                <button className="btn btn-primary" onClick={savePassword} disabled={savingPass || profileNewPass.length < 6 || profileNewPass !== profileConfirmPass || (hasPassword && !curPass)} style={{ borderRadius: 'var(--r-full)', marginTop: 8 }}>
                   {savingPass ? <><LoadingSpinner style={{width:16, height:16}} /> Menyimpan...</> : '🔐 Simpan Password'}
                 </button>
               </div>
@@ -1520,17 +1487,10 @@ export default function Page() {
                      <span>{(selectedHistoryItem.amount || 0).toLocaleString('id-ID')} IDR</span>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => cancelHistoryDeposit(selectedHistoryItem.id)} disabled={busy}>Batalkan</button>
+                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => { setSelectedHistoryItem(null); cancelDeposit(); }} disabled={busy}>Batalkan</button>
                     <button className="btn" style={{ flex: 1, background: '#fff', color: '#0b63f6' }} onClick={() => window.open(selectedHistoryItem.qr_image, '_blank')}>Download</button>
                   </div>
-                  <button className="btn" style={{ width: '100%', background: 'transparent', border: '1px solid #fff', color: '#fff' }} onClick={() => checkHistoryDeposit(selectedHistoryItem.id)} disabled={busy}>Saya sudah membayar ✔</button>
-                </div>
-              )}
-
-              {selectedHistoryItem.itemType === 'order' && selectedHistoryItem.status === 'waiting' && (
-                <div className="qris-blue-card" style={{ background: 'var(--glass)', color: 'var(--text)', border: '1px solid var(--border)', padding: '16px' }}>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-3)', marginBottom: 16 }}>Menunggu SMS verifikasi masuk. Anda dapat membatalkan jika terlalu lama.</div>
-                  <button className="btn btn-danger" onClick={() => cancelHistoryOrder(selectedHistoryItem.id)} disabled={busy} style={{ width: '100%' }}>Batalkan Pesanan</button>
+                  <button className="btn" style={{ width: '100%', background: 'transparent', border: '1px solid #fff', color: '#fff' }} onClick={() => { setSelectedHistoryItem(null); checkHistoryDeposit(selectedHistoryItem.id); }} disabled={busy}>Saya sudah membayar ✔</button>
                 </div>
               )}
 
@@ -1637,8 +1597,10 @@ export default function Page() {
           ) : (
             <div className="operator-grid">
               {operators.map(op => (
-                <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op.name)}>
-                  <div className="operator-icon-placeholder">{getOpInitials(op.name)}</div>
+                <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op)}>
+                  <div className="operator-icon-placeholder">
+                     <img src={op.operator_img || op.image || op.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(op.name)}&background=random&color=fff&size=128&bold=true`} alt={op.name} />
+                  </div>
                   <span>{op.name}</span>
                 </button>
               ))}
