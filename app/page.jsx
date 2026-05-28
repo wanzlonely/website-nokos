@@ -84,6 +84,12 @@ const formatTime = secs => {
   return `${m}:${s}`;
 };
 
+const formatReceiptDate = (ts) => {
+  const d = new Date(Number(ts));
+  const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  return `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()}, ${d.getHours().toString().padStart(2,'0')}.${d.getMinutes().toString().padStart(2,'0')} WIB`;
+};
+
 function EyeToggle({ show, onToggle }) {
   return (
     <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
@@ -141,6 +147,9 @@ const IconCross = () => (
 const IconWarning = () => (
   <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
 );
+const IconClock = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+);
 
 export default function Page() {
   const [theme, setTheme] = useState('dark');
@@ -188,7 +197,6 @@ export default function Page() {
   const [depositAmount, setDepositAmount] = useState('');
   const [qrisData, setQrisData] = useState(null);
   const [creatingQris, setCreatingQris] = useState(false);
-  const [checkingDeposit, setCheckingDeposit] = useState(false);
   const [cancelingDeposit, setCancelingDeposit] = useState(false);
   const [depositCooldown, setDepositCooldown] = useState(0);
 
@@ -212,6 +220,7 @@ export default function Page() {
 
   const [historyItems, setHistoryItems] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
 
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
@@ -606,6 +615,7 @@ export default function Page() {
         number_id: selectedOrderContext.country.number_id,
         provider_id: selectedOrderContext.provider.provider_id,
         service_id: selectedSvc.service_code,
+        service_name: selectedSvc.service_name,
         operator_id: operatorName
       });
       setOrderingProv(null);
@@ -1148,13 +1158,13 @@ export default function Page() {
                     {order.otp_code ? (
                        <div className="ao-status-text" style={{ color: 'var(--green)' }}>Selesai <IconCheck /></div>
                     ) : (
-                       <div className="ao-status-text">Menunggu <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
+                       <div className="ao-status-text">Menunggu <IconClock /></div>
                     )}
                  </div>
                  
                  {order.otp_code ? (
                     <div style={{ background: 'var(--green-soft)', padding: '16px', borderRadius: '12px', marginTop: '10px' }}>
-                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.4rem', fontWeight: 800, color: 'var(--green)', letterSpacing: '4px', textAlign: 'center' }}>{order.otp_code}</div>
+                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.4rem', fontWeight: 900, color: 'var(--green)', letterSpacing: '4px', textAlign: 'center' }}>{order.otp_code}</div>
                        <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', textAlign: 'center', marginTop: '4px', fontWeight: 600 }}>{order.otp_msg}</div>
                     </div>
                  ) : (
@@ -1189,7 +1199,7 @@ export default function Page() {
             {ppobError ? (
                <div className="empty-state" style={{ padding: '60px 0' }}>
                  <div className="modal-icon text-amber" style={{ animation: 'none' }}>
-                    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="60" height="60"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <IconWarning />
                  </div>
                  <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 8, marginTop: 16 }}>Sistem Maintenance</h3>
                  <p style={{ textAlign: 'center', padding: '0 20px' }}>{ppobError}<br/>Silakan coba lagi nanti.</p>
@@ -1283,25 +1293,32 @@ export default function Page() {
               </div>
             ) : (
               <div className="history-list">
-                {historyItems.map((item, i) => (
-                   <div key={i} className="history-card" style={{ animationDelay: `${(i % 15) * 0.03}s` }}>
-                      <div className="history-icon">
-                         {item.itemType === 'order' ? <SvgProduct /> : <SvgTopUp />}
-                      </div>
-                      <div className="history-info">
-                         <div className="history-title">
-                            {item.itemType === 'order' ? `Order: ${item.number || 'Virtual Number'}` : `Deposit Saldo`}
-                         </div>
-                         <div className="history-date">
-                            {new Date(Number(item.timestamp)).toLocaleString('id-ID')}
-                         </div>
-                      </div>
-                      <div className={`history-status ${item.status}`}>
-                         <div className="history-amt">{item.itemType === 'deposit' ? '+' : '-'}{fmt(item.amount || item.price)}</div>
-                         <span>{item.status.toUpperCase()}</span>
-                      </div>
-                   </div>
-                ))}
+                {historyItems.map((item, i) => {
+                   const isCompleted = item.status === 'completed' || item.status === 'success' || item.status === 'paid';
+                   const isCanceled = item.status === 'canceled' || item.status === 'cancel';
+                   const statusClass = isCompleted ? 'completed' : isCanceled ? 'canceled' : 'pending';
+                   const statusLabel = isCompleted ? 'Berhasil' : isCanceled ? 'Batal' : 'Pending';
+
+                   return (
+                     <div key={i} className="history-card" style={{ animationDelay: `${(i % 15) * 0.03}s` }} onClick={() => setSelectedHistoryItem(item)}>
+                        <div className="history-icon">
+                           {item.itemType === 'order' ? <SvgProduct /> : <SvgTopUp />}
+                        </div>
+                        <div className="history-info">
+                           <div className="history-title">
+                              {item.itemType === 'order' ? `${item.service_name || 'Virtual Number'} - ${item.operator}` : `Deposit Saldo`}
+                           </div>
+                           <div className="history-date">
+                              {formatReceiptDate(item.timestamp)}
+                           </div>
+                        </div>
+                        <div className={`history-status ${statusClass}`}>
+                           <div className="history-amt">{item.itemType === 'deposit' ? '+' : '-'}{fmt(item.amount || item.price)}</div>
+                           <span>{statusLabel}</span>
+                        </div>
+                     </div>
+                   );
+                })}
               </div>
             )}
           </div>
@@ -1320,7 +1337,7 @@ export default function Page() {
             <div className="profile-section">
               <div className="profile-section-title">
                 <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="18"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                  <SvgProfile />
                 </span> Info Akun
               </div>
               <div className="profile-section-body">
@@ -1403,6 +1420,91 @@ export default function Page() {
         </button>
       </nav>
 
+      {/* --- Detail Riwayat Modal (Receipt) --- */}
+      {selectedHistoryItem && (
+        <div className="receipt-overlay">
+           <div className="receipt-nav">
+              <div className="receipt-nav-back" onClick={() => setSelectedHistoryItem(null)}>
+                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                 Kembali
+              </div>
+              <div style={{ flex: 1, textAlign: 'center', marginLeft: '-24px', fontWeight: 800 }}>Payment</div>
+           </div>
+
+           <div className={`receipt-header-bg ${selectedHistoryItem.status}`}>
+              <div className="receipt-icon-circle">
+                 {selectedHistoryItem.status === 'completed' || selectedHistoryItem.status === 'success' || selectedHistoryItem.status === 'paid' ? <IconCheck /> : selectedHistoryItem.status === 'canceled' || selectedHistoryItem.status === 'cancel' ? <IconCross /> : <IconClock />}
+              </div>
+              <div className="receipt-status-text">
+                 {selectedHistoryItem.status === 'completed' || selectedHistoryItem.status === 'success' || selectedHistoryItem.status === 'paid' ? 'Transaksi Berhasil' : selectedHistoryItem.status === 'canceled' || selectedHistoryItem.status === 'cancel' ? 'Transaksi Dibatalkan' : 'Transaksi Pending'}
+              </div>
+              <div className="receipt-date-text">{formatReceiptDate(selectedHistoryItem.timestamp)}</div>
+           </div>
+
+           <div className="receipt-card">
+              <div className="receipt-total-label">Total Transaksi</div>
+              <div className="receipt-total-value">{(selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
+
+              <div className="receipt-box">
+                 <div className="receipt-box-icon">
+                    {selectedHistoryItem.itemType === 'order' ? <SvgProduct /> : <SvgTopUp />}
+                 </div>
+                 <div className="receipt-box-info">
+                    <div className="receipt-box-title">{selectedHistoryItem.itemType === 'order' ? selectedHistoryItem.service_name : 'Deposit Saldo'}</div>
+                    <div className="receipt-box-sub">{selectedHistoryItem.itemType === 'order' ? `${selectedHistoryItem.country} / ${selectedHistoryItem.operator}` : 'QRIS / DANA'}</div>
+                 </div>
+              </div>
+
+              <div className="receipt-row">
+                 <div className="receipt-row-label">ID Reff</div>
+                 <div className="receipt-row-value" style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px'}}>
+                   {selectedHistoryItem.id} 
+                   <div className="receipt-copy" onClick={() => { navigator.clipboard.writeText(selectedHistoryItem.id); showToast('success', 'Tersalin', 'ID disalin'); }}>
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                   </div>
+                 </div>
+              </div>
+              <div className="receipt-row">
+                 <div className="receipt-row-label">Waktu transaksi</div>
+                 <div className="receipt-row-value">{formatReceiptDate(selectedHistoryItem.timestamp)}</div>
+              </div>
+              {selectedHistoryItem.itemType === 'order' && selectedHistoryItem.number && (
+                <div className="receipt-row">
+                   <div className="receipt-row-label">Nomor Telp</div>
+                   <div className="receipt-row-value">{selectedHistoryItem.number}</div>
+                </div>
+              )}
+
+              <div className="receipt-divider"></div>
+
+              <div className="receipt-row">
+                 <div className="receipt-row-label">Nominal</div>
+                 <div className="receipt-row-value">{(selectedHistoryItem.base_amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
+              </div>
+              {selectedHistoryItem.itemType === 'deposit' && (
+                <div className="receipt-row">
+                   <div className="receipt-row-label">Biaya Admin</div>
+                   <div className="receipt-row-value">{((selectedHistoryItem.amount || 0) - (selectedHistoryItem.base_amount || 0)).toLocaleString('id-ID')} IDR</div>
+                </div>
+              )}
+              <div className="receipt-row" style={{ color: 'var(--blue2)', fontWeight: 800 }}>
+                 <div className="receipt-row-label" style={{ color: 'var(--blue2)' }}>Total Pembayaran</div>
+                 <div className="receipt-row-value">{(selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
+              </div>
+
+              <div className="receipt-footer-text">
+                 Gateway pembayaran oleh <strong>RumahOTP</strong>
+              </div>
+
+              <div className="receipt-actions">
+                 <button className="btn btn-secondary" onClick={() => window.open('https://rumahotp.io', '_blank')}>Support</button>
+                 <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => setSelectedHistoryItem(null)}>Selesai</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* --- Bottom Sheet Negara & Server --- */}
       <div className={`sheet-overlay ${showSheet ? 'open' : ''}`} onClick={() => setShowSheet(false)} />
       <div className={`bottom-sheet ${showSheet ? 'open' : ''}`}>
         <div className="sheet-handle" />
