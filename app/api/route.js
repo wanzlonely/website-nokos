@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { redis, PROFIT, getUserById, deductBalance, updateProfile, addBalance } from '@/lib/redis';
+import { redis, PROFIT, getUserById, deductBalance, updateProfile, addBalance, getUserByEmail } from '@/lib/redis';
 
 const BASE = 'https://www.rumahotp.io/api';
 const ENDPOINTS = {
@@ -31,6 +31,11 @@ export async function POST(request) {
   const { endpoint, ...payload } = body;
   const user = await getUser(request);
 
+  if (endpoint === 'check_email') {
+    const u = await getUserByEmail(payload.email);
+    return NextResponse.json({ exists: !!(u && u.id) });
+  }
+
   if (endpoint === 'balance') {
     if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
     return NextResponse.json({
@@ -48,8 +53,12 @@ export async function POST(request) {
     if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
     const updates = {};
     if (payload.username !== undefined) updates.username = payload.username.trim();
-    await updateProfile(user.email, updates);
-    return NextResponse.json({ success: true, msg: 'Profil berhasil disimpan' });
+    try {
+      await updateProfile(user.email, updates);
+      return NextResponse.json({ success: true, msg: 'Profil berhasil disimpan' });
+    } catch (error) {
+      return NextResponse.json({ success: false, msg: error.message });
+    }
   }
 
   if (endpoint === 'logout') {
@@ -102,8 +111,11 @@ export async function POST(request) {
     if (data.success && data.data) {
       const actualAmt = data.data.amount || data.data.total || payload.amount;
       await redis.hset(`deposit:${data.data.id || data.data.deposit_id}`, { userId: user.id, amount: Number(actualAmt), status: 'pending' });
+      return NextResponse.json(data);
+    } else {
+      const errorMsg = typeof data.data === 'string' ? data.data : (data.message || 'Gagal membuat QRIS.');
+      return NextResponse.json({ success: false, msg: errorMsg });
     }
-    return NextResponse.json(data);
   }
 
   if (endpoint === 'deposit_status') {
@@ -131,7 +143,6 @@ export async function POST(request) {
     const url = `${BASE}${ENDPOINTS.deposit_cancel}?deposit_id=${payload.deposit_id}`;
     const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
-    
     if (data.success) {
       await redis.hset(`deposit:${payload.deposit_id}`, { status: 'canceled' });
     }
@@ -165,7 +176,6 @@ export async function POST(request) {
     } else {
       await addBalance(user.id, sellPrice);
     }
-
     return NextResponse.json(data);
   }
 
