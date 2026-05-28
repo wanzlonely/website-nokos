@@ -166,7 +166,7 @@ export async function POST(request) {
     const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
     if (data.success && data.data) {
-      const actualAmt = data.data.amount || data.data.total || payload.amount;
+      const actualAmt = data.data.diterima || data.data.amount || data.data.total || payload.amount;
       const depId = data.data.id || data.data.deposit_id;
       const qrImage = data.data.qr_image || data.data.qr_url || '';
       
