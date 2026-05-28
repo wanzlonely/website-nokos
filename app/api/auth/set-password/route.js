@@ -19,7 +19,7 @@ export async function POST(request) {
 
   const user = await getUser(request);
   if (!user) {
-    return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+    return NextResponse.json({ success: false, msg: 'Sesi berakhir, silakan login ulang' }, { status: 401 });
   }
 
   if (user.passwordHash && !setupMode) {
@@ -38,7 +38,10 @@ export async function POST(request) {
     updates.username = username.trim();
   }
 
-  await updateProfile(user.email, updates);
-
-  return NextResponse.json({ success: true, msg: 'Data berhasil disimpan' });
+  try {
+    await updateProfile(user.email, updates);
+    return NextResponse.json({ success: true, msg: 'Data berhasil disimpan' });
+  } catch (error) {
+    return NextResponse.json({ success: false, msg: error.message });
+  }
 }
