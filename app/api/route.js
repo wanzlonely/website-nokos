@@ -12,13 +12,13 @@ import {
 const BASE = 'https://www.rumahotp.io/api';
 
 const ENDPOINTS = {
-  services: '/v1/services',
-  countries: '/v1/countries',
-  operators: '/v1/operators',
-  order_create: '/v1/orders',
+  services: '/v2/services',
+  countries: '/v2/countries',
+  operators: '/v2/operators',
+  order_create: '/v2/orders',
   order_status: '/v1/orders/get_status',
-  deposit_create: '/v1/deposit/create',
-  deposit_status: '/v1/deposit/get_status',
+  deposit_create: '/v2/deposit/create',
+  deposit_status: '/v2/deposit/get_status',
   deposit_cancel: '/v1/deposit/cancel',
   h2h_product: '/v1/h2h/product',
 };
