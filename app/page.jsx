@@ -225,6 +225,11 @@ export default function Page() {
   const [ppobItems, setPpobItems] = useState([]);
   const [ppobError, setPpobError] = useState('');
   const [ppobQuery, setPpobQuery] = useState('');
+  const [ppobLoading, setPpobLoading] = useState(false);
+
+  const [loadingSvcs, setLoadingSvcs] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingOperators, setLoadingOperators] = useState(false);
 
   const [historyItems, setHistoryItems] = useState([]);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
@@ -271,7 +276,9 @@ export default function Page() {
 
   useEffect(() => {
     if (step !== 'app') return;
+    setLoadingSvcs(true);
     api('services').then(r => {
+      setLoadingSvcs(false);
       if (r.success && Array.isArray(r.data)) {
         const base = r.data.map(s => ({ ...s, price: null, stock: null }));
         setServices(base);
@@ -335,7 +342,9 @@ export default function Page() {
   }, []);
 
   const fetchHistory = async () => {
+    setLoadingHistory(true);
     const r = await api('history');
+    setLoadingHistory(false);
     if (r.success && Array.isArray(r.data)) {
       setHistoryItems(r.data);
     }
@@ -408,7 +417,9 @@ export default function Page() {
 
   const fetchPpob = async () => {
     setPpobError('');
+    setPpobLoading(true);
     const r = await api('h2h_products');
+    setPpobLoading(false);
     if (r.success && Array.isArray(r.data)) {
       setPpobItems(r.data);
     } else {
@@ -601,14 +612,17 @@ export default function Page() {
   const handleOrderClick = async (country, provider) => {
     setSelectedOrderContext({ country, provider });
     setShowOperatorModal(true);
+    setLoadingOperators(true);
     try {
       const r = await api('operators', { country: country.name, provider_id: provider.provider_id });
+      setLoadingOperators(false);
       if (r.success && Array.isArray(r.data) && r.data.length > 0) {
         setOperators([{ id: 'any', name: 'any' }, ...r.data]);
       } else {
         setOperators([{ id: 'any', name: 'any' }]);
       }
     } catch (e) {
+      setLoadingOperators(false);
       setOperators([{ id: 'any', name: 'any' }]);
     }
   };
@@ -646,6 +660,20 @@ export default function Page() {
     } catch(e) {
       setOrderingProv(null);
       showToast('error', 'Error', 'Koneksi ke server gagal.');
+    }
+  };
+
+  const cancelOrder = async () => {
+    if (!order) return;
+    setCancelingOrder(true);
+    const r = await api('order_cancel', { order_id: order.order_id });
+    setCancelingOrder(false);
+    if (r.success) {
+      setOrder(null);
+      showToast('success', 'Dibatalkan', 'Pesanan dibatalkan dan saldo telah dikembalikan.');
+      api('balance').then(res => res.success && setBalance(res.data.balance));
+    } else {
+      showToast('error', 'Gagal Batal', r.msg || 'Terjadi kesalahan saat membatalkan.');
     }
   };
 
@@ -1495,7 +1523,7 @@ export default function Page() {
                      <span>{(selectedHistoryItem.amount || 0).toLocaleString('id-ID')} IDR</span>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => { setSelectedHistoryItem(null); cancelDeposit(); }} disabled={busy}>Batalkan</button>
+                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => { const depId = selectedHistoryItem.id; setSelectedHistoryItem(null); cancelHistoryDeposit(depId); }} disabled={busy}>Batalkan</button>
                     <button className="btn" style={{ flex: 1, background: '#fff', color: '#0b63f6' }} onClick={() => window.open(selectedHistoryItem.qr_image, '_blank')}>Download</button>
                   </div>
                   <button className="btn" style={{ width: '100%', background: 'transparent', border: '1px solid #fff', color: '#fff' }} onClick={() => { setSelectedHistoryItem(null); checkHistoryDeposit(selectedHistoryItem.id); }} disabled={busy}>Saya sudah membayar ✔</button>
