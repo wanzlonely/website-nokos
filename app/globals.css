@@ -1043,3 +1043,161 @@ body {
   margin-top: 22px; letter-spacing: 0.04em; text-transform: uppercase;
   animation: fadeInUp 0.4s ease 0.65s both;
 }
+/* ===== UI ENHANCEMENTS (PATCH) ===== */
+
+/* --- Service grid: slightly larger icon, sharper cards --- */
+.svc-icon-wrap {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 14px !important;
+  background: var(--glass2) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+}
+.svc-card {
+  padding: 16px 8px 14px !important;
+  gap: 8px !important;
+  border-radius: 18px !important;
+}
+.svc-name {
+  font-size: 0.73rem !important;
+  color: var(--text) !important;
+  opacity: 0.9;
+  font-weight: 700 !important;
+}
+.svc-price {
+  font-size: 0.7rem !important;
+  letter-spacing: -0.01em;
+}
+.svc-stock {
+  font-size: 0.61rem !important;
+  background: var(--glass2);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  font-weight: 700;
+}
+
+/* --- Section header: left accent bar --- */
+.section-header-block h2 {
+  position: relative;
+  padding-left: 12px !important;
+}
+.section-header-block h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--blue2);
+  border-radius: var(--r-full);
+}
+.section-header-block .count {
+  background: var(--blue-soft);
+  color: var(--blue2);
+  border: 1px solid var(--border-blue);
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+/* --- Search wrap: improved focus ring --- */
+.search-wrap {
+  margin-bottom: 16px !important;
+}
+.search-wrap input {
+  font-weight: 600 !important;
+  letter-spacing: 0.01em;
+}
+
+/* --- History cards: improved icon background --- */
+.history-icon {
+  background: linear-gradient(135deg, var(--blue-soft), var(--cyan-soft)) !important;
+  border: 1.5px solid var(--border-blue) !important;
+}
+
+/* --- Deposit amount chips: tighter spacing --- */
+.deposit-amounts {
+  gap: 8px !important;
+  margin: 12px 0 16px !important;
+}
+.amount-chip {
+  padding: 10px 4px !important;
+  font-size: 0.78rem !important;
+  border-radius: var(--r-sm) !important;
+}
+
+/* --- Country item: slightly more refined --- */
+.country-item {
+  border: 1px solid var(--border) !important;
+  margin-bottom: 0;
+}
+.country-item.selected {
+  box-shadow: 0 0 0 2px var(--blue-soft) !important;
+}
+
+/* --- Provider item: sharper --- */
+.provider-item {
+  border: 1px solid var(--border-blue) !important;
+  background: rgba(79,140,255,0.03) !important;
+}
+.provider-id {
+  font-size: 0.7rem !important;
+}
+
+/* --- Operator modal: tighten grid --- */
+.operator-grid {
+  gap: 10px !important;
+}
+.operator-card {
+  padding: 14px 8px 10px !important;
+  border-radius: var(--r-lg) !important;
+  gap: 7px !important;
+}
+.operator-card span {
+  font-size: 0.68rem !important;
+  color: var(--text) !important;
+  opacity: 0.85;
+}
+.operator-icon-placeholder {
+  width: 42px !important;
+  height: 42px !important;
+  background: var(--glass2) !important;
+  border: 1px solid var(--border-blue) !important;
+}
+
+/* --- Active order: subtle background shimmer --- */
+.active-order-wrap {
+  border-color: var(--border-blue) !important;
+  background: rgba(79,140,255,0.025) !important;
+}
+
+/* --- Profile banner: match dark/light theme --- */
+[data-theme="light"] .profile-wrap > div:first-child {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+}
+
+/* --- PPOB service grid 2-col: card improvements --- */
+.service-grid[style*="repeat(2"] .svc-card,
+.ppob-grid .svc-card {
+  align-items: flex-start !important;
+}
+
+/* --- Receipt overlay: smooth scroll --- */
+.receipt-overlay {
+  scrollbar-width: none;
+}
+
+/* --- Modal: smoother animation --- */
+.modal-content {
+  box-shadow: 0 24px 72px rgba(0,0,0,0.45), 0 0 0 1px var(--border2) !important;
+}
+
+/* --- Confetti: ensure visible above modals --- */
+.success-confetti-wrap {
+  z-index: 10001 !important;
+}
