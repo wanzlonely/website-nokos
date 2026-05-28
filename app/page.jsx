@@ -108,7 +108,7 @@ const getOpInitials = (name) => {
 function EyeToggle({ show, onToggle }) {
   return (
     <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
-      {show ? '🐵' : '🙈'}
+      {show ? '🙈' : '🐵'}
     </button>
   );
 }
@@ -117,6 +117,7 @@ function LoadingSpinner({ style }) {
   return <div className="loading-spinner" style={style} />;
 }
 
+// SVG Icons
 const SvgProduct = () => (
   <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
     <rect x="5" y="2" width="14" height="20" rx="3" fill="currentColor" fillOpacity="0.15"/>
