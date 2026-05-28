@@ -97,7 +97,7 @@ const formatReceiptDate = (ts) => {
 function EyeToggle({ show, onToggle }) {
   return (
     <button type="button" className="eye-btn" onClick={onToggle} tabIndex={-1}>
-      {show ? '🐵' : '🙈''}
+      {show ? '🐵' : '🙈'}
     </button>
   );
 }
