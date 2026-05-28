@@ -113,6 +113,19 @@ export async function POST(request) {
 
   if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
 
+  if (endpoint === 'history') {
+    const keys = await redis.lrange(`history:${user.id}`, 0, 49);
+    if (!keys || keys.length === 0) return NextResponse.json({ success: true, data: [] });
+    
+    const data = await Promise.all(keys.map(async k => {
+      const item = await redis.hgetall(k);
+      if (!item) return null;
+      return { ...item, id: k.split(':')[1], itemType: k.startsWith('order:') ? 'order' : 'deposit' };
+    }));
+
+    return NextResponse.json({ success: true, data: data.filter(Boolean) });
+  }
+
   if (endpoint === 'deposit_create') {
     const key = getApiKey({});
     const url = `${BASE}${ENDPOINTS.deposit_create}?amount=${payload.amount}&payment_id=qris`;
@@ -120,7 +133,14 @@ export async function POST(request) {
     const data = await r.json();
     if (data.success && data.data) {
       const actualAmt = data.data.amount || data.data.total || payload.amount;
-      await redis.hset(`deposit:${data.data.id || data.data.deposit_id}`, { userId: user.id, amount: Number(actualAmt), status: 'pending' });
+      const depId = data.data.id || data.data.deposit_id;
+      await redis.hset(`deposit:${depId}`, { 
+        userId: user.id, 
+        amount: Number(actualAmt), 
+        status: 'pending',
+        timestamp: Date.now()
+      });
+      await redis.lpush(`history:${user.id}`, `deposit:${depId}`);
       return NextResponse.json(data);
     } else {
       const errorMsg = typeof data.data === 'string' ? data.data : (data.message || 'Gagal membuat QRIS.');
@@ -188,12 +208,43 @@ export async function POST(request) {
     if (data.success && data.data) {
       data.data.price = sellPrice;
       data.data.base_price = basePrice;
-      await redis.hset(`order:${data.data.order_id}`, { userId: user.id, service_id: payload.service_id, number: data.data.phone_number, status: 'waiting' });
+      await redis.hset(`order:${data.data.order_id}`, { 
+        userId: user.id, 
+        service_id: payload.service_id, 
+        number: data.data.phone_number, 
+        country: targetCountry?.name || '',
+        operator: payload.operator_id || 'any',
+        status: 'waiting',
+        price: sellPrice,
+        timestamp: Date.now()
+      });
+      await redis.lpush(`history:${user.id}`, `order:${data.data.order_id}`);
     } else {
       await addBalance(user.id, sellPrice);
-      data.msg = data.message || data.data || 'Gagal membeli nomor dari server.';
+      data.msg = data.message || data.data || 'Stock penyedia habis, tunggu beberapa saat.';
     }
     return NextResponse.json(data);
+  }
+
+  if (endpoint === 'order_cancel') {
+    const orderKey = `order:${payload.order_id}`;
+    const orderData = await redis.hgetall(orderKey);
+    if (!orderData || orderData.userId !== user.id) return NextResponse.json({ success: false, msg: 'Order tidak valid' });
+
+    const key = getApiKey({}); 
+    const url = `${BASE}${ENDPOINTS.order_status.replace('get_status', 'set_status')}?order_id=${payload.order_id}&status=cancel`;
+    const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
+    const data = await r.json();
+
+    if (data.success || (data.message && data.message.includes('cancel'))) {
+      if (orderData.status !== 'canceled') {
+        await addBalance(user.id, Number(orderData.price));
+        await redis.hset(orderKey, { status: 'canceled' });
+      }
+      return NextResponse.json({ success: true, msg: 'Pesanan berhasil dibatalkan.' });
+    } else {
+      return NextResponse.json({ success: false, msg: data.message || data.data || 'Gagal membatalkan pesanan.' });
+    }
   }
 
   if (endpoint === 'order_status') {
@@ -203,6 +254,11 @@ export async function POST(request) {
     const data = await r.json();
     if (data.success && data.data?.price) {
       data.data.price = Number(data.data.price) + PROFIT;
+      if (data.data.otp_code) {
+        await redis.hset(`order:${payload.order_id}`, { status: 'completed' });
+      } else if (data.data.status === 'cancel') {
+        await redis.hset(`order:${payload.order_id}`, { status: 'canceled' });
+      }
     }
     return NextResponse.json(data);
   }
