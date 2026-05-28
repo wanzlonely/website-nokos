@@ -1,22 +1,17 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { getUserByEmail, getUserByUsername, createSession } from '@/lib/redis';
+import { getUserByEmail, createSession } from '@/lib/redis';
 
 export async function POST(request) {
-  const { identifier, password } = await request.json();
+  const { email, password } = await request.json();
   
-  if (!identifier || !password) {
-    return NextResponse.json({ success: false, msg: 'Username/Email atau password salah' });
+  if (!email || !password) {
+    return NextResponse.json({ success: false, msg: 'Email dan password wajib diisi' });
   }
 
-  let user = await getUserByEmail(identifier);
-  
+  const user = await getUserByEmail(email);
   if (!user || !user.id) {
-    user = await getUserByUsername(identifier);
-  }
-
-  if (!user || !user.id) {
-    return NextResponse.json({ success: false, msg: 'Username/Email atau password salah' });
+    return NextResponse.json({ success: false, msg: 'Email belum terdaftar' });
   }
 
   if (!user.passwordHash) {
@@ -25,11 +20,10 @@ export async function POST(request) {
 
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) {
-    return NextResponse.json({ success: false, msg: 'Username/Email atau password salah' });
+    return NextResponse.json({ success: false, msg: 'Password salah' });
   }
 
   const token = await createSession(user.id);
-  
   const res = NextResponse.json({
     success: true,
     user: { email: user.email, balance: Number(user.balance || 0), username: user.username }
