@@ -169,8 +169,6 @@ body {
   box-shadow: var(--card-shadow);
 }
 
-.auth-logo-small-old-removed {
-
 .auth-card {
   width: 100%; max-width: 380px;
   background: var(--glass);
