@@ -239,6 +239,7 @@ export default function Page() {
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
   const [cancelNotif, setCancelNotif] = useState(null);
+  const [paymentSuccessNotif, setPaymentSuccessNotif] = useState(null);
 
   const showToast = (type, title, msg) => {
     setToast({ type, title, msg });
@@ -248,6 +249,11 @@ export default function Page() {
   const showCancelNotif = (amount, subtitle = 'Transaksi telah dibatalkan') => {
     setCancelNotif({ amount, subtitle });
     setTimeout(() => setCancelNotif(null), 2800);
+  };
+
+  const showPaymentSuccessNotif = (amount, subtitle = 'Saldo berhasil masuk ke akun kamu!') => {
+    setPaymentSuccessNotif({ amount, subtitle });
+    setTimeout(() => setPaymentSuccessNotif(null), 5500);
   };
 
   const showModal = (type, title, msg, onConfirm = null) => {
@@ -429,9 +435,12 @@ export default function Page() {
           const r = await api('deposit_status', { deposit_id: selectedHistoryItem.id });
           const newStatus = r.status || r.data?.status;
           if (r.success && (newStatus === 'paid' || newStatus === 'success' || newStatus === 'completed')) {
+            const creditAmt = selectedHistoryItem?.diterima || selectedHistoryItem?.base_amount || selectedHistoryItem?.amount || 0;
+            setHistoryItems(prev => prev.map(h => h.id === selectedHistoryItem.id ? { ...h, status: 'success' } : h));
+            setSelectedHistoryItem(prev => prev ? { ...prev, status: 'success' } : prev);
             fetchHistory();
             api('balance').then(res => res.success && setBalance(res.data.balance));
-            showToast('success', 'Berhasil', 'Pembayaran telah diterima!');
+            showPaymentSuccessNotif(creditAmt, 'Pembayaran telah diterima!');
           } else if (r.success && (newStatus === 'cancel' || newStatus === 'canceled')) {
             fetchHistory();
           }
@@ -450,10 +459,11 @@ export default function Page() {
           const r = await api('deposit_status', { deposit_id: qrisData.id });
           const newStatus = r.status || r.data?.status;
           if (r.success && (newStatus === 'paid' || newStatus === 'success' || newStatus === 'completed')) {
+            const creditAmt = qrisData.credit_amount || qrisData.actual_amount || 0;
             setBalance(r.new_balance || r.data?.balance || balance);
             setQrisData(null);
             setDepositAmount('');
-            showToast('success', 'Berhasil', 'Deposit berhasil masuk!');
+            showPaymentSuccessNotif(creditAmt, 'Deposit berhasil masuk ke akun kamu!');
             api('balance').then(res => res.success && setBalance(res.data.balance));
           }
         } catch (error) {}
@@ -811,7 +821,10 @@ export default function Page() {
     const r = await api('deposit_status', { deposit_id: depId });
     setBusy(false);
     if(r.success && (r.status === 'paid' || r.data?.status === 'paid' || r.data?.status === 'success' || r.status === 'success')) {
-      showToast('success', 'Berhasil', 'Pembayaran telah diterima.');
+      const creditAmt = selectedHistoryItem?.diterima || selectedHistoryItem?.base_amount || selectedHistoryItem?.amount || 0;
+      setHistoryItems(prev => prev.map(h => h.id === depId ? { ...h, status: 'success' } : h));
+      setSelectedHistoryItem(prev => prev ? { ...prev, status: 'success' } : prev);
+      showPaymentSuccessNotif(creditAmt, 'Saldo berhasil masuk ke akun kamu!');
       fetchHistory();
       api('balance').then(res => res.success && setBalance(res.data.balance));
     } else {
@@ -839,10 +852,11 @@ export default function Page() {
     setBusy(false);
     const paid = r.success && (r.status === 'paid' || r.data?.status === 'paid' || r.data?.status === 'success' || r.status === 'success');
     if (paid) {
+      const creditAmt = qrisData.credit_amount || qrisData.actual_amount || 0;
       setBalance(r.new_balance || balance);
       setQrisData(null);
       setDepositAmount('');
-      showToast('success', 'Berhasil', 'Deposit berhasil masuk!');
+      showPaymentSuccessNotif(creditAmt, 'Deposit berhasil masuk ke akun kamu!');
       api('balance').then(res => res.success && setBalance(res.data.balance));
       fetchHistory();
     } else {
@@ -900,7 +914,14 @@ export default function Page() {
       <div className="auth-screen welcome-bg">
         <div className="welcome-wrapper floating">
           <div className="auth-logo-badge"><div className="auth-logo-dot" /><span>SISTEM ONLINE</span></div>
-          <h1 className="logo-title">WALZ<br/><span className="text-cyan">NEXUS</span></h1>
+          <div className="walz-hero-logo">
+            <img
+              src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg"
+              alt="WALZ SHOP"
+              className="walz-hero-img"
+              onError={e => { e.target.style.display='none'; }}
+            />
+          </div>
           <p className="logo-subtitle">LAYANAN DIGITAL PREMIUM</p>
         </div>
 
@@ -935,7 +956,7 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><img src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg" alt="WALZ SHOP" className="auth-logo-img" onError={e => { e.target.style.display='none'; }} /></div>
         <div className="auth-card">
           <div className="auth-card-title">Login Kembali 👋</div>
           <div className="auth-card-sub">Masukkan email dan password akun kamu</div>
@@ -985,7 +1006,7 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><img src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg" alt="WALZ SHOP" className="auth-logo-img" onError={e => { e.target.style.display='none'; }} /></div>
         <div className="auth-card">
           <div className="auth-card-title">Daftar Akun Baru 🚀</div>
           <div className="auth-card-sub">Masukkan email aktif untuk menerima kode verifikasi</div>
@@ -1027,7 +1048,7 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><img src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg" alt="WALZ SHOP" className="auth-logo-img" onError={e => { e.target.style.display='none'; }} /></div>
         <div className="auth-card">
           <div className="auth-card-title">Verifikasi OTP 📬</div>
           <div className="otp-info">Kode dikirim ke <strong>{email}</strong></div>
@@ -1078,7 +1099,7 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><img src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg" alt="WALZ SHOP" className="auth-logo-img" onError={e => { e.target.style.display='none'; }} /></div>
         <div className="auth-card">
           <div className="auth-card-title">Lengkapi Profil ✍️</div>
           <div className="auth-card-sub">Buat username unik dan password agar kedepannya bisa langsung login tanpa OTP.</div>
@@ -1129,7 +1150,7 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><img src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg" alt="WALZ SHOP" className="auth-logo-img" onError={e => { e.target.style.display='none'; }} /></div>
         <div className="auth-card">
           <div className="auth-card-title">Lupa Password 🔒</div>
           <div className="auth-card-sub">Masukkan email akun kamu yang pernah terdaftar untuk reset password.</div>
@@ -1169,7 +1190,7 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><img src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg" alt="WALZ SHOP" className="auth-logo-img" onError={e => { e.target.style.display='none'; }} /></div>
         <div className="auth-card">
           <div className="auth-card-title">Password Baru 🔐</div>
           <div className="auth-card-sub">Buat password baru untuk akun kamu</div>
@@ -1216,6 +1237,58 @@ export default function Page() {
           </div>
         </div>
       )}
+
+      {/* ===== PAYMENT SUCCESS OVERLAY ===== */}
+      {paymentSuccessNotif && (
+        <div className="success-notif-overlay" onClick={() => setPaymentSuccessNotif(null)}>
+          {/* Confetti particles */}
+          <div className="success-confetti-wrap">
+            {[...Array(28)].map((_, i) => {
+              const colors = ['#00e87a','#4f8cff','#ffb340','#ff4060','#00d4ff','#a78bfa','#f472b6','#fb923c','#34d399','#60a5fa'];
+              const color = colors[i % colors.length];
+              const left = ((i * 3.7 + 1.5) % 97) + 1.5;
+              const delay = (i * 0.09) % 2.1;
+              const duration = 1.3 + (i % 6) * 0.22;
+              const size = 6 + (i % 7) * 2;
+              const isCircle = i % 4 !== 0;
+              const isSquare = i % 4 === 0;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: `${left}%`,
+                    top: '-24px',
+                    width: isSquare ? size : isCircle ? size * 0.7 : size,
+                    height: isSquare ? size * 0.55 : isCircle ? size * 0.7 : size * 0.45,
+                    background: color,
+                    borderRadius: isCircle ? '50%' : '3px',
+                    animation: `confettiFall ${duration}s ${delay}s cubic-bezier(0.25,0.46,0.45,0.94) forwards`,
+                    transform: `rotate(${(i * 53) % 360}deg)`,
+                    opacity: 0.92,
+                    boxShadow: `0 0 6px ${color}88`,
+                  }}
+                />
+              );
+            })}
+          </div>
+          <div className="success-notif-card" onClick={e => e.stopPropagation()}>
+            <div className="success-notif-ripple" />
+            <div className="success-notif-ripple delay1" />
+            <div className="success-notif-ripple delay2" />
+            <div className="success-notif-icon">
+              <IconCheck />
+            </div>
+            <div className="success-notif-emoji">🎉</div>
+            <div className="success-notif-title">Pembayaran Berhasil!</div>
+            <div className="success-notif-subtitle">{paymentSuccessNotif.subtitle}</div>
+            {paymentSuccessNotif.amount > 0 && (
+              <div className="success-notif-amount">+{fmt(paymentSuccessNotif.amount)}</div>
+            )}
+            <div className="success-notif-tap">Ketuk di mana saja untuk menutup</div>
+          </div>
+        </div>
+      )}
       <div className="toast-container">
         {toast && (
           <div className="toast">
@@ -1237,7 +1310,12 @@ export default function Page() {
         <div className="header-row">
           <div className="header-brand">
             <div className="header-online"><div className="header-dot" /><span>Online</span></div>
-            <div className="header-title">WALZ<br/><span>NEXUS</span></div>
+            <img
+              src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg"
+              alt="WALZ SHOP"
+              className="header-logo-img"
+              onError={e => { e.target.style.display='none'; }}
+            />
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="theme-toggle" onClick={() => setTab('activity')} title="Riwayat">
@@ -1922,73 +2000,4 @@ export default function Page() {
 
       <div className={`modal-overlay ${showOperatorModal ? 'open' : ''}`} onClick={() => setShowOperatorModal(false)}>
         <div className={`modal-content ${showOperatorModal ? 'popIn' : ''}`} onClick={e => e.stopPropagation()} style={{ padding: '24px' }}>
-          <h3 style={{ marginBottom: '16px', fontSize: '1.15rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Pilih Operator Seluler</h3>
-          {loadingOperators ? (
-            <div className="loading-grid" style={{ padding: '24px 0' }}><LoadingSpinner /></div>
-          ) : (
-            <div className="operator-grid">
-              {operators.map(op => (
-                <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op)}>
-                  <div className="operator-icon-placeholder">
-                     <img src={op.operator_img || op.image || op.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(op.name)}&background=random&color=fff&size=128&bold=true`} alt={op.name} />
-                  </div>
-                  <span>{op.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-    {/* ===== GLOBAL MODAL (Saldo Tidak Cukup, dll) ===== */}
-    {modal.show && (
-      <div className="modal-overlay open" onClick={closeModal}>
-        <div className="modal-content popIn" onClick={e => e.stopPropagation()}>
-          <div className={`modal-svg-wrap ${modal.type}`} style={{ width: 76, height: 76 }}>
-            {modal.type === 'warning' && (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ width: 38, height: 38 }}>
-                <rect x={2} y={9} width={20} height={13} rx={2.5} strokeLinecap="round" strokeLinejoin="round"/>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 9V7a5 5 0 0110 0v2"/>
-                <circle cx={12} cy={15.5} r={1.5} fill="currentColor" stroke="none"/>
-              </svg>
-            )}
-            {modal.type === 'error' && <IconCross />}
-            {modal.type === 'success' && <IconCheck />}
-            {modal.type === 'info' && <span style={{ fontSize: 32 }}>{'ℹ️'}</span>}
-          </div>
-          <h3 style={{ fontSize: '1.22rem' }}>{modal.title}</h3>
-          <p style={{ fontSize: '0.88rem', marginBottom: modal.onConfirm ? 20 : 24 }}>{modal.msg}</p>
-          {modal.onConfirm ? (
-            <div className="modal-actions">
-              <button className="btn btn-secondary" style={{ height: 48 }} onClick={closeModal}>
-                Nanti
-              </button>
-              <button
-                className="btn btn-primary"
-                style={{
-                  height: 48,
-                  background: 'linear-gradient(135deg, #ffb340 0%, #ff7c20 100%)',
-                  border: 'none',
-                  fontWeight: 800,
-                  letterSpacing: '0.02em',
-                  boxShadow: '0 4px 18px rgba(255,140,32,0.35)',
-                }}
-                onClick={() => { if (modal.onConfirm) modal.onConfirm(); closeModal(); }}
-              >
-                {'💳'} Top Up Sekarang
-              </button>
-            </div>
-          ) : (
-            <div className="modal-actions">
-              <button className="btn btn-primary" style={{ height: 48 }} onClick={closeModal}>
-                Oke, Mengerti
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    )}
-
-    </>
-  );
-}
+          <h3 style={{ marginBottom: '16px', fontSize: '1.15rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Pilih Operat
