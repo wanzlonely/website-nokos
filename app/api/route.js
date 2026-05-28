@@ -104,7 +104,7 @@ export async function POST(request) {
 
   if (endpoint === 'operators') {
     const key = getApiKey(payload);
-    const params = newSearchParams({ country: payload.country, provider_id: payload.provider_id });
+    const params = new URLSearchParams({ country: payload.country, provider_id: payload.provider_id });
     const url = `${BASE}${ENDPOINTS.operators}?${params}`;
     const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' }, cache: 'no-store' });
     const data = await r.json();
