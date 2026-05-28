@@ -104,7 +104,7 @@ export async function POST(request) {
 
   if (endpoint === 'operators') {
     const key = getApiKey(payload);
-    const params = new URLSearchParams({ country: payload.country, provider_id: payload.provider_id });
+    const params = newSearchParams({ country: payload.country, provider_id: payload.provider_id });
     const url = `${BASE}${ENDPOINTS.operators}?${params}`;
     const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' }, cache: 'no-store' });
     const data = await r.json();
@@ -117,10 +117,44 @@ export async function POST(request) {
     const keys = await redis.lrange(`history:${user.id}`, 0, 49);
     if (!keys || keys.length === 0) return NextResponse.json({ success: true, data: [] });
     
+    const keyAPI = getApiKey({});
+    
     const data = await Promise.all(keys.map(async k => {
-      const item = await redis.hgetall(k);
+      let item = await redis.hgetall(k);
       if (!item) return null;
-      return { ...item, id: k.split(':')[1], itemType: k.startsWith('order:') ? 'order' : 'deposit' };
+      const id = k.split(':')[1];
+      const itemType = k.startsWith('order:') ? 'order' : 'deposit';
+
+      if (item.status === 'pending' && itemType === 'deposit') {
+        try {
+          const r = await fetch(`${BASE}/v2/deposit/get_status?deposit_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
+          const resData = await r.json();
+          if (resData.success && resData.data && (resData.data.status === 'success' || resData.data.status === 'paid')) {
+            await redis.hset(k, { status: 'completed' });
+            await addBalance(user.id, item.amount);
+            item.status = 'completed';
+          } else if (resData.data && resData.data.status === 'cancel') {
+            await redis.hset(k, { status: 'canceled' });
+            item.status = 'canceled';
+          }
+        } catch(e){}
+      } else if (item.status === 'waiting' && itemType === 'order') {
+        try {
+          const r = await fetch(`${BASE}/v1/orders/get_status?order_id=${id}`, { headers: { 'x-apikey': keyAPI, accept: 'application/json' } });
+          const resData = await r.json();
+          if (resData.success && resData.data?.otp_code) {
+            await redis.hset(k, { status: 'completed', otp_code: resData.data.otp_code, otp_msg: resData.data.otp_msg });
+            item.status = 'completed';
+            item.otp_code = resData.data.otp_code;
+            item.otp_msg = resData.data.otp_msg;
+          } else if (resData.data?.status === 'cancel') {
+            await redis.hset(k, { status: 'canceled' });
+            item.status = 'canceled';
+          }
+        } catch(e){}
+      }
+
+      return { ...item, id, itemType };
     }));
 
     return NextResponse.json({ success: true, data: data.filter(Boolean) });
@@ -134,10 +168,13 @@ export async function POST(request) {
     if (data.success && data.data) {
       const actualAmt = data.data.amount || data.data.total || payload.amount;
       const depId = data.data.id || data.data.deposit_id;
+      const qrImage = data.data.qr_image || data.data.qr_url || '';
+      
       await redis.hset(`deposit:${depId}`, { 
         userId: user.id, 
         amount: Number(actualAmt), 
         base_amount: Number(payload.amount),
+        qr_image: qrImage,
         status: 'pending',
         timestamp: Date.now()
       });
@@ -213,6 +250,7 @@ export async function POST(request) {
         userId: user.id, 
         service_id: payload.service_id, 
         service_name: payload.service_name || 'Virtual Number',
+        service_img: payload.service_img || '',
         number: data.data.phone_number, 
         country: targetCountry?.name || '',
         operator: payload.operator_id || 'any',
@@ -257,7 +295,7 @@ export async function POST(request) {
     if (data.success && data.data?.price) {
       data.data.price = Number(data.data.price) + PROFIT;
       if (data.data.otp_code) {
-        await redis.hset(`order:${payload.order_id}`, { status: 'completed' });
+        await redis.hset(`order:${payload.order_id}`, { status: 'completed', otp_code: data.data.otp_code, otp_msg: data.data.otp_msg });
       } else if (data.data.status === 'cancel') {
         await redis.hset(`order:${payload.order_id}`, { status: 'canceled' });
       }
