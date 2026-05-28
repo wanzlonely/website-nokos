@@ -96,6 +96,29 @@ function LoadingSpinner() {
   return <div className="loading-spinner" />;
 }
 
+const SvgProduct = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+);
+const SvgPPOB = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 4h2a8 8 0 018 8v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3a2 2 0 00-2-2H9a2 2 0 00-2 2v3a2 2 0 01-2 2H3a2 2 0 01-2-2v-4a8 8 0 018-8zm-2 7h.01M8 11h.01M16 10h.01M16 12h.01M15 11h.01M17 11h.01"></path></svg>
+);
+const SvgTopUp = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+);
+const SvgProfile = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+);
+
+const IconCheck = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
+);
+const IconCross = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+);
+const IconWarning = () => (
+  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+);
+
 export default function Page() {
   const [theme, setTheme] = useState('dark');
   const [step, setStep] = useState('init');
@@ -137,7 +160,6 @@ export default function Page() {
   const [creatingQris, setCreatingQris] = useState(false);
   const [checkingDeposit, setCheckingDeposit] = useState(false);
   const [cancelingDeposit, setCancelingDeposit] = useState(false);
-  const [depositMsg, setDepositMsg] = useState(null);
   const [depositCooldown, setDepositCooldown] = useState(0);
 
   const [curPass, setCurPass] = useState('');
@@ -145,21 +167,25 @@ export default function Page() {
   const [profileConfirmPass, setProfileConfirmPass] = useState('');
   const [showCurPass, setShowCurPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
-  const [profileMsg, setProfileMsg] = useState(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPass, setSavingPass] = useState(false);
 
-  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfPw, setShowConfPw] = useState(false);
 
-  const [showTopupModal, setShowTopupModal] = useState(false);
   const [ppobItems, setPpobItems] = useState([]);
   const [ppobLoading, setPpobLoading] = useState(false);
   const [ppobError, setPpobError] = useState('');
   const [ppobQuery, setPpobQuery] = useState('');
+
+  const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
+
+  const showModal = (type, title, msg, onConfirm = null) => {
+    setModal({ show: true, type, title, msg, onConfirm });
+  };
+  const closeModal = () => setModal(prev => ({ ...prev, show: false }));
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('walz_theme') || 'dark';
@@ -288,9 +314,24 @@ export default function Page() {
     setCountdown(OTP_DURATION);
   };
 
+  const handleForgotCheck = async () => {
+    if (!email) {
+      showModal('warning', 'Perhatian', 'Harap masukkan alamat email terlebih dahulu.');
+      return;
+    }
+    setBusy(true);
+    const check = await api('check_email', { email });
+    if (!check.exists) {
+      setBusy(false);
+      showModal('error', 'Email Tidak Ditemukan', 'Email ini belum terdaftar. Silakan buat akun baru terlebih dahulu.');
+      return;
+    }
+    sendOtp(email, 'reset');
+  };
+
   const sendOtp = async (targetEmail, mode = 'register') => {
     if (!targetEmail) return;
-    setBusy(true); setError('');
+    setBusy(true);
     const r = await authApi('request-otp', { email: targetEmail });
     setBusy(false);
     if (r.success) {
@@ -299,13 +340,13 @@ export default function Page() {
       setStep(mode === 'reset' ? 'forgot_otp' : 'register_otp');
       startCountdown();
     } else {
-      setError(r.msg || 'Gagal mengirim OTP');
+      showModal('error', 'Gagal', r.msg || 'Gagal mengirim OTP ke email kamu.');
     }
   };
 
   const verifyOtp = async () => {
     if (otpCode.length !== 6) return;
-    setBusy(true); setError('');
+    setBusy(true);
     const r = await authApi('verify-otp', { email, code: otpCode, mode: otpMode });
     setBusy(false);
     if (r.success) {
@@ -325,13 +366,13 @@ export default function Page() {
         }
       }
     } else {
-      setError(r.msg || 'OTP salah atau sudah expired');
+      showModal('error', 'Verifikasi Gagal', r.msg || 'Kode OTP salah atau sudah expired.');
     }
   };
 
   const completeSetup = async () => {
     if (newPass.length < 6 || newPass !== confirmPass || !setupUser) return;
-    setBusy(true); setError('');
+    setBusy(true);
     const r = await authApi('set-password', { newPassword: newPass, setupMode: true, username: setupUser });
     setBusy(false);
     if (r.success) {
@@ -345,13 +386,13 @@ export default function Page() {
         }
       });
     } else {
-      setError(r.msg || 'Gagal menyimpan pengaturan');
+      showModal('error', 'Gagal', r.msg || 'Gagal menyimpan pengaturan profil.');
     }
   };
 
   const loginWithPassword = async () => {
     if (!identifier || !pwInput) return;
-    setBusy(true); setError('');
+    setBusy(true);
     const r = await authApi('login-password', { identifier, password: pwInput });
     setBusy(false);
     if (r.success) {
@@ -361,13 +402,13 @@ export default function Page() {
       setHasPassword(true);
       setStep('app');
     } else {
-      setError(r.msg || 'Login gagal');
+      showModal('error', 'Login Gagal', r.msg || 'Username/Email atau password salah.');
     }
   };
 
   const resetPassword = async () => {
     if (newPass.length < 6 || newPass !== confirmPass) return;
-    setBusy(true); setError('');
+    setBusy(true);
     const r = await authApi('reset-password', { resetToken, newPassword: newPass });
     setBusy(false);
     if (r.success) {
@@ -376,8 +417,9 @@ export default function Page() {
       setUsername(r.user.username);
       setHasPassword(true);
       setStep('app');
+      showModal('success', 'Berhasil', 'Password baru berhasil disimpan.');
     } else {
-      setError(r.msg || 'Reset gagal, coba lagi');
+      showModal('error', 'Gagal', r.msg || 'Proses reset password gagal, coba lagi nanti.');
     }
   };
 
@@ -426,10 +468,10 @@ export default function Page() {
       api('balance').then(res => res.success && setBalance(res.data.balance));
     } else {
       if (r.msg && r.msg.toLowerCase().includes('tidak cukup')) {
-        setShowTopupModal(true);
         setShowSheet(false);
+        showModal('warning', 'Saldo Tidak Cukup!', 'Saldo kamu kurang untuk membeli nomor ini. Yuk top up dulu agar bisa bertransaksi dengan lancar.', () => setTab('deposit'));
       } else {
-        setError(r.msg || 'Gagal membeli nomor');
+        showModal('error', 'Transaksi Gagal', r.msg || 'Gagal membeli nomor dari server.');
       }
     }
   };
@@ -446,7 +488,7 @@ export default function Page() {
 
   const createQris = async () => {
     if (!depositAmount || Number(depositAmount) <= 0) return;
-    setCreatingQris(true); setError(''); setDepositMsg(null);
+    setCreatingQris(true);
     const r = await api('deposit_create', { amount: Number(depositAmount) });
     setCreatingQris(false);
     if (r.success && r.data) {
@@ -454,59 +496,59 @@ export default function Page() {
       setQrisData({ ...r.data, actual_amount: actualAmt });
       setDepositCooldown(120);
     } else {
-      setError(r.msg || 'Gagal membuat QRIS. Cek nominal kembali.');
+      showModal('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
     }
   };
 
   const checkDeposit = async () => {
     if (!qrisData) return;
-    setCheckingDeposit(true); setDepositMsg(null);
+    setCheckingDeposit(true);
     const r = await api('deposit_status', { deposit_id: qrisData.id });
     setCheckingDeposit(false);
     if (r.success && r.status === 'paid') {
       setBalance(r.new_balance);
       setQrisData(null);
       setDepositAmount('');
-      setDepositMsg({ type: 'success', text: 'Deposit berhasil masuk!' });
-      setTimeout(() => setDepositMsg(null), 5000);
+      showModal('success', 'Pembayaran Diterima', 'Deposit berhasil masuk ke saldo kamu!');
     } else {
-      setDepositMsg({ type: 'error', text: 'Pembayaran belum terdeteksi. Silakan coba lagi.' });
+      showModal('warning', 'Belum Terdeteksi', 'Pembayaran belum masuk. Tunggu beberapa saat dan cek kembali.');
     }
   };
 
   const cancelDeposit = async () => {
     if (!qrisData) return;
     setCancelingDeposit(true);
-    const r = await api('deposit_cancel', { deposit_id: qrisData.id });
+    await api('deposit_cancel', { deposit_id: qrisData.id });
     setCancelingDeposit(false);
     
     setQrisData(null); 
     setDepositAmount(''); 
-    setDepositMsg({ type: 'success', text: 'Transaksi pembayaran dibatalkan.' });
-    setTimeout(() => setDepositMsg(null), 3000);
+    showModal('success', 'Dibatalkan', 'Transaksi pembayaran berhasil dibatalkan.');
   };
 
   const saveProfile = async () => {
-    setSavingProfile(true); setProfileMsg(null);
+    setSavingProfile(true);
     const r = await api('profile_update', { username });
     setSavingProfile(false);
-    setProfileMsg({ type: r.success ? 'success' : 'error', text: r.msg });
-    setTimeout(() => setProfileMsg(null), 3000);
+    if (r.success) {
+      showModal('success', 'Berhasil', r.msg);
+    } else {
+      showModal('error', 'Gagal', r.msg);
+    }
   };
 
   const savePassword = async () => {
     if (profileNewPass.length < 6 || profileNewPass !== profileConfirmPass) return;
-    setSavingPass(true); setProfileMsg(null);
+    setSavingPass(true);
     const r = await authApi('set-password', { currentPassword: curPass || undefined, newPassword: profileNewPass });
     setSavingPass(false);
     if (r.success) {
       setHasPassword(true);
       setCurPass(''); setProfileNewPass(''); setProfileConfirmPass('');
-      setProfileMsg({ type: 'success', text: r.msg || 'Password berhasil disimpan' });
+      showModal('success', 'Berhasil', r.msg || 'Password berhasil disimpan');
     } else {
-      setProfileMsg({ type: 'error', text: r.msg });
+      showModal('error', 'Gagal', r.msg);
     }
-    setTimeout(() => setProfileMsg(null), 4000);
   };
 
   const filteredSvcs = useMemo(() => {
@@ -532,16 +574,17 @@ export default function Page() {
   if (step === 'welcome') {
     return (
       <div className="auth-screen welcome-bg">
-        <div className="auth-logo floating">
-          <div className="auth-logo-badge"><div className="auth-logo-dot" /><span>Sistem Online</span></div>
-          <h1>WALZ <span>NEXUS</span></h1>
-          <p>Layanan Digital Premium</p>
+        <div className="welcome-wrapper floating">
+          <div className="auth-logo-badge"><div className="auth-logo-dot" /><span>SISTEM ONLINE</span></div>
+          <h1 className="logo-title">WALZ<br/><span className="text-cyan">NEXUS</span></h1>
+          <p className="logo-subtitle">LAYANAN DIGITAL PREMIUM</p>
         </div>
-        <div className="auth-card" style={{ padding: '48px 28px' }}>
-          <button className="btn btn-primary" onClick={() => { setStep('register'); setError(''); }} style={{ height: 60, fontSize: '1.05rem', borderRadius: 'var(--r-full)' }}>
+        
+        <div className="welcome-card">
+          <button className="btn btn-primary" onClick={() => setStep('register')} style={{ height: 60, fontSize: '1.05rem', borderRadius: 'var(--r-full)' }}>
             📝 Buat Akun Baru
           </button>
-          <button className="btn btn-secondary" onClick={() => { setStep('login'); setError(''); }} style={{ height: 60, fontSize: '1.05rem', marginBottom: 0, borderRadius: 'var(--r-full)' }}>
+          <button className="btn btn-secondary" onClick={() => setStep('login')} style={{ height: 60, fontSize: '1.05rem', marginBottom: 0, borderRadius: 'var(--r-full)' }}>
             🔑 Masuk ke Akun
           </button>
         </div>
@@ -552,21 +595,19 @@ export default function Page() {
   if (step === 'login') {
     return (
       <div className="auth-screen welcome-bg">
-        <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Login Kembali 👋</div>
           <div className="auth-card-sub">Masukkan username/email dan password kamu</div>
-          {error && <div className="error-msg">⚠️ {error}</div>}
           <div className="input-field">
             <label>Username / Email</label>
-            <input type="text" value={identifier} placeholder="nama@email.com atau username"
-              onChange={e => { setIdentifier(e.target.value); setError(''); }} />
+            <input type="text" value={identifier} placeholder="nama@email.com atau username" onChange={e => setIdentifier(e.target.value)} />
           </div>
           <div className="input-field">
             <label>Password</label>
             <div className="input-icon-wrap">
               <input type={showPw ? 'text' : 'password'} value={pwInput} placeholder="••••••••"
-                onChange={e => { setPwInput(e.target.value); setError(''); }}
+                onChange={e => setPwInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !busy && identifier && pwInput && loginWithPassword()} />
               <EyeToggle show={showPw} onToggle={() => setShowPw(v => !v)} />
             </div>
@@ -574,10 +615,10 @@ export default function Page() {
           <button className="btn btn-primary" onClick={loginWithPassword} disabled={!identifier || !pwInput || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
             {busy ? <><LoadingSpinner /> Memproses...</> : '🔑 Masuk Sekarang'}
           </button>
-          <button className="btn-ghost" onClick={() => { setStep('forgot'); setError(''); }} style={{ color: 'var(--blue2)', marginBottom: 8 }}>
+          <button className="btn-ghost" onClick={() => setStep('forgot')} style={{ color: 'var(--blue2)', marginBottom: 8 }}>
             Lupa Password?
           </button>
-          <button className="btn-ghost" onClick={() => { setStep('welcome'); setError(''); setIdentifier(''); setPwInput(''); }}>
+          <button className="btn-ghost" onClick={() => { setStep('welcome'); setIdentifier(''); setPwInput(''); }}>
             ← Kembali
           </button>
         </div>
@@ -588,21 +629,20 @@ export default function Page() {
   if (step === 'register') {
     return (
       <div className="auth-screen welcome-bg">
-        <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Daftar Akun Baru 🚀</div>
           <div className="auth-card-sub">Masukkan email aktif untuk menerima kode verifikasi</div>
-          {error && <div className="error-msg">⚠️ {error}</div>}
           <div className="input-field">
             <label>Alamat Email</label>
             <input type="email" value={email} placeholder="nama@email.com"
-              onChange={e => { setEmail(e.target.value); setError(''); }}
+              onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !busy && email && sendOtp(email, 'register')} />
           </div>
           <button className="btn btn-primary" onClick={() => sendOtp(email, 'register')} disabled={!email || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
             {busy ? <><LoadingSpinner /> Mengirim...</> : '✉️ Kirim Kode OTP'}
           </button>
-          <button className="btn-ghost" onClick={() => { setStep('welcome'); setEmail(''); setError(''); }}>
+          <button className="btn-ghost" onClick={() => { setStep('welcome'); setEmail(''); }}>
             ← Batal
           </button>
         </div>
@@ -615,7 +655,7 @@ export default function Page() {
     const timerClass = countdown > 60 ? '' : countdown > 0 ? 'warning' : 'expired';
     return (
       <div className="auth-screen welcome-bg">
-        <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Verifikasi OTP 📬</div>
           <div className="otp-info">Kode dikirim ke <strong>{email}</strong></div>
@@ -623,12 +663,11 @@ export default function Page() {
             <span className="timer-label">{countdown > 0 ? 'Kode berlaku' : 'Kode expired'}</span>
             <span className={`timer-time ${timerClass}`}>{countdown > 0 ? formatTime(countdown) : '00:00'}</span>
           </div>
-          {error && <div className="error-msg">⚠️ {error}</div>}
           <div className="input-field">
             <label>Kode OTP (6 digit)</label>
             <input type="text" inputMode="numeric" maxLength={6} value={otpCode} placeholder="••••••"
               style={{ fontSize: '1.5rem', letterSpacing: '0.3em', textAlign: 'center' }}
-              onChange={e => { setOtpCode(e.target.value.replace(/\D/g, '')); setError(''); }}
+              onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
               onKeyDown={e => e.key === 'Enter' && otpCode.length === 6 && !busy && verifyOtp()}
               disabled={countdown === 0} />
           </div>
@@ -638,7 +677,7 @@ export default function Page() {
           <button className="btn btn-secondary" onClick={() => sendOtp(email, isReset ? 'reset' : 'register')} disabled={busy || countdown > 0} style={{ borderRadius: 'var(--r-full)' }}>
             {countdown > 0 ? `Kirim Ulang (${formatTime(countdown)})` : '🔄 Kirim Ulang OTP'}
           </button>
-          <button className="btn-ghost" onClick={() => { setStep(isReset ? 'forgot' : 'register'); setOtpCode(''); setError(''); }}>
+          <button className="btn-ghost" onClick={() => { setStep(isReset ? 'forgot' : 'register'); setOtpCode(''); }}>
             ← Ganti Email
           </button>
         </div>
@@ -651,26 +690,25 @@ export default function Page() {
     const isValid = setupUser.length > 2 && newPass.length >= 6 && isMatch;
     return (
       <div className="auth-screen welcome-bg">
-        <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Lengkapi Profil ✍️</div>
-          <div className="auth-card-sub">Buat username dan password agar kedepannya bisa langsung login tanpa OTP.</div>
-          {error && <div className="error-msg">⚠️ {error}</div>}
+          <div className="auth-card-sub">Buat username unik dan password agar kedepannya bisa langsung login tanpa OTP.</div>
           <div className="input-field">
             <label>Username</label>
-            <input type="text" value={setupUser} placeholder="Nama tanpa spasi" onChange={e => { setSetupUser(e.target.value.replace(/\s/g, '')); setError(''); }} />
+            <input type="text" value={setupUser} placeholder="Nama unik tanpa spasi" onChange={e => setSetupUser(e.target.value.replace(/\s/g, ''))} />
           </div>
           <div className="input-field">
             <label>Password Baru</label>
             <div className="input-icon-wrap">
-              <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => { setNewPass(e.target.value); setError(''); }} />
+              <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => setNewPass(e.target.value)} />
               <EyeToggle show={showNewPw} onToggle={() => setShowNewPw(v => !v)} />
             </div>
           </div>
           <div className="input-field">
             <label>Konfirmasi Password</label>
             <div className="input-icon-wrap">
-              <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => { setConfirmPass(e.target.value); setError(''); }} />
+              <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => setConfirmPass(e.target.value)} />
               <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
             </div>
           </div>
@@ -687,19 +725,18 @@ export default function Page() {
   if (step === 'forgot') {
     return (
       <div className="auth-screen welcome-bg">
-        <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Lupa Password 🔒</div>
-          <div className="auth-card-sub">Kami akan mengirim kode OTP ke email kamu untuk proses reset.</div>
-          {error && <div className="error-msg">⚠️ {error}</div>}
+          <div className="auth-card-sub">Masukkan email akun kamu yang pernah terdaftar untuk reset password.</div>
           <div className="input-field">
             <label>Email Terdaftar</label>
-            <input type="email" value={email} placeholder="nama@email.com" onChange={e => { setEmail(e.target.value); setError(''); }} />
+            <input type="email" value={email} placeholder="nama@email.com" onChange={e => setEmail(e.target.value)} />
           </div>
-          <button className="btn btn-primary" onClick={() => sendOtp(email, 'reset')} disabled={!email || busy} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner /> Mengirim...</> : '📩 Kirim OTP Reset'}
+          <button className="btn btn-primary" onClick={handleForgotCheck} disabled={!email || busy} style={{ borderRadius: 'var(--r-full)' }}>
+            {busy ? <><LoadingSpinner /> Memeriksa...</> : '📩 Lanjutkan'}
           </button>
-          <button className="btn-ghost" onClick={() => { setStep('login'); setError(''); }}>
+          <button className="btn-ghost" onClick={() => setStep('login')}>
             ← Batal
           </button>
         </div>
@@ -712,22 +749,21 @@ export default function Page() {
     const isValid = newPass.length >= 6 && isMatch;
     return (
       <div className="auth-screen welcome-bg">
-        <div className="auth-logo"><h1>WALZ <span>NEXUS</span></h1></div>
+        <div className="auth-logo-small"><h1>WALZ <span>NEXUS</span></h1></div>
         <div className="auth-card">
           <div className="auth-card-title">Password Baru 🔐</div>
           <div className="auth-card-sub">Buat password baru untuk akun kamu</div>
-          {error && <div className="error-msg">⚠️ {error}</div>}
           <div className="input-field">
             <label>Password Baru</label>
             <div className="input-icon-wrap">
-              <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => { setNewPass(e.target.value); setError(''); }} />
+              <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => setNewPass(e.target.value)} />
               <EyeToggle show={showNewPw} onToggle={() => setShowNewPw(v => !v)} />
             </div>
           </div>
           <div className="input-field">
             <label>Konfirmasi Password</label>
             <div className="input-icon-wrap">
-              <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => { setConfirmPass(e.target.value); setError(''); }} />
+              <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => setConfirmPass(e.target.value)} />
               <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
             </div>
           </div>
@@ -819,7 +855,9 @@ export default function Page() {
               <div className="otp-block">
                 {!order.otp_code ? (
                   <div className="otp-waiting">
-                    <div className="otp-waiting-icon">📱</div>
+                    <div className="otp-waiting-icon">
+                      <svg fill="none" stroke="var(--blue2)" strokeWidth="2" viewBox="0 0 24 24" width="32"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    </div>
                     <p>Menunggu SMS masuk...<br />Gunakan nomor di atas untuk verifikasi</p>
                     <button className="btn btn-primary" onClick={checkSms} disabled={checkingSms} style={{ width: '100%', borderRadius: 'var(--r-full)' }}>
                       {checkingSms ? <><LoadingSpinner /> Mengecek...</> : '🔄 Cek SMS'}
@@ -842,14 +880,16 @@ export default function Page() {
         {tab === 'ppob' && (
           <div style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
             <div className="section-hd">
-              <h2>Top Up & Game</h2>
+              <h2>PPOB & TOP UP GAME</h2>
               {!ppobLoading && !ppobError && <span className="count">{filteredPpob.length} produk</span>}
             </div>
             
             {ppobError ? (
                <div className="empty-state" style={{ padding: '60px 0' }}>
-                 <div className="modal-icon text-amber" style={{ animation: 'none' }}>🛠️</div>
-                 <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 8 }}>Sistem Maintenance</h3>
+                 <div className="modal-icon text-amber" style={{ animation: 'none' }}>
+                    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="60" height="60"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                 </div>
+                 <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 8, marginTop: 16 }}>Sistem Maintenance</h3>
                  <p style={{ textAlign: 'center', padding: '0 20px' }}>{ppobError}<br/>Silakan coba lagi nanti.</p>
                  <button className="btn btn-secondary mt-16" onClick={fetchPpob} style={{ width: 'auto', borderRadius: 'var(--r-full)' }}>🔄 Cek Kembali</button>
                </div>
@@ -890,16 +930,11 @@ export default function Page() {
             <div className="section-hd" style={{ marginBottom: 16 }}>
               <h2>Top Up Saldo</h2>
             </div>
-            {depositMsg && (
-              <div className={`profile-msg ${depositMsg.type}`}>
-                {depositMsg.type === 'success' ? '✅' : '⚠️'} {depositMsg.text}
-              </div>
-            )}
             {!qrisData ? (
               <div className="deposit-card">
                 <div className="input-field">
                   <label>Nominal Deposit</label>
-                  <input type="number" value={depositAmount} placeholder="Contoh: 10000" onChange={e => { setDepositAmount(e.target.value); setError(''); }} />
+                  <input type="number" value={depositAmount} placeholder="Contoh: 10000" onChange={e => setDepositAmount(e.target.value)} />
                 </div>
                 <div className="deposit-amounts">
                   {[10000, 20000, 50000, 100000, 200000, 500000].map(amt => (
@@ -908,7 +943,6 @@ export default function Page() {
                     </button>
                   ))}
                 </div>
-                {error && <div className="error-msg" style={{ marginTop: 12 }}>{error}</div>}
                 <button className="btn btn-primary" onClick={createQris} disabled={!depositAmount || Number(depositAmount) <= 0 || creatingQris || depositCooldown > 0} style={{ marginTop: 12, borderRadius: 'var(--r-full)' }}>
                   {creatingQris ? <><LoadingSpinner /> Membuat QRIS...</> : depositCooldown > 0 ? `Tunggu ${formatTime(depositCooldown)}` : '📲 Buat QRIS Pembayaran'}
                 </button>
@@ -943,18 +977,14 @@ export default function Page() {
               <div className="profile-email">{user?.email}</div>
             </div>
 
-            {profileMsg && (
-              <div className={`profile-msg ${profileMsg.type}`}>
-                {profileMsg.type === 'success' ? '✅' : '❌'} {profileMsg.text}
-              </div>
-            )}
-
             <div className="profile-section">
-              <div className="profile-section-title"><span>👤</span> Info Akun</div>
+              <div className="profile-section-title">
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}><SvgProfile /></span> Info Akun
+              </div>
               <div className="profile-section-body">
                 <div className="input-field">
                   <label>Username</label>
-                  <input type="text" value={username} placeholder="Nama tampilan" onChange={e => setUsername(e.target.value.replace(/\s/g, ''))} maxLength={30} />
+                  <input type="text" value={username} placeholder="Nama unik tampilan" onChange={e => setUsername(e.target.value.replace(/\s/g, ''))} maxLength={30} />
                 </div>
                 <div className="input-field" style={{ marginBottom: 0 }}>
                   <label>Email</label>
@@ -967,7 +997,11 @@ export default function Page() {
             </div>
 
             <div className="profile-section">
-              <div className="profile-section-title"><span>🔐</span> {hasPassword ? 'Ganti Password' : 'Atur Password'}</div>
+              <div className="profile-section-title">
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </span> {hasPassword ? 'Ganti Password' : 'Atur Password'}
+              </div>
               <div className="profile-section-body">
                 {hasPassword && (
                   <div className="input-field">
@@ -1010,19 +1044,19 @@ export default function Page() {
 
       <nav className="bottom-nav">
         <button className={`nav-item ${tab === 'virtual' ? 'active' : ''}`} onClick={() => { setTab('virtual'); setOrder(null); }}>
-          <div className="nav-icon-wrap">📞</div>
+          <div className="nav-icon-wrap"><SvgProduct /></div>
           <span>Produk</span>
         </button>
         <button className={`nav-item ${tab === 'ppob' ? 'active' : ''}`} onClick={() => setTab('ppob')}>
-          <div className="nav-icon-wrap">🎮</div>
+          <div className="nav-icon-wrap"><SvgPPOB /></div>
           <span>PPOB</span>
         </button>
         <button className={`nav-item ${tab === 'deposit' ? 'active' : ''}`} onClick={() => setTab('deposit')}>
-          <div className="nav-icon-wrap">💳</div>
+          <div className="nav-icon-wrap"><SvgTopUp /></div>
           <span>Top Up</span>
         </button>
         <button className={`nav-item ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>
-          <div className="nav-icon-wrap">👤</div>
+          <div className="nav-icon-wrap"><SvgProfile /></div>
           <span>Profil</span>
         </button>
       </nav>
@@ -1084,14 +1118,21 @@ export default function Page() {
         )}
       </div>
 
-      <div className={`modal-overlay ${showTopupModal ? 'open' : ''}`}>
-        <div className={`modal-content ${showTopupModal ? 'popIn' : ''}`}>
-          <div className="modal-icon">💸</div>
-          <h3>Saldo Tidak Cukup!</h3>
-          <p>Waduh, saldo kamu kurang nih buat beli nomor ini. Yuk top up dulu biar bisa transaksi lagi dengan lancar.</p>
+      <div className={`modal-overlay ${modal.show ? 'open' : ''}`}>
+        <div className={`modal-content ${modal.show ? 'popIn' : ''}`}>
+          <div className={`modal-svg-wrap ${modal.type}`}>
+            {modal.type === 'success' && <IconCheck />}
+            {modal.type === 'error' && <IconCross />}
+            {modal.type === 'warning' && <IconWarning />}
+            {modal.type === 'info' && <span style={{ fontSize: '30px' }}>ℹ️</span>}
+          </div>
+          <h3>{modal.title}</h3>
+          <p>{modal.msg}</p>
           <div className="modal-actions">
-            <button className="btn btn-secondary" onClick={() => setShowTopupModal(false)} style={{ borderRadius: 'var(--r-full)' }}>Nanti Saja</button>
-            <button className="btn btn-primary" onClick={() => { setShowTopupModal(false); setTab('deposit'); }} style={{ borderRadius: 'var(--r-full)', marginBottom: 10 }}>💳 Top Up Sekarang</button>
+            {modal.onConfirm && <button className="btn btn-secondary" onClick={closeModal} style={{ borderRadius: 'var(--r-full)' }}>Nanti Saja</button>}
+            <button className="btn btn-primary" onClick={() => { if(modal.onConfirm) modal.onConfirm(); closeModal(); }} style={{ borderRadius: 'var(--r-full)', marginBottom: 0 }}>
+              {modal.onConfirm ? 'Lanjutkan' : 'Tutup'}
+            </button>
           </div>
         </div>
       </div>
