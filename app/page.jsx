@@ -234,6 +234,7 @@ export default function Page() {
   const [historyItems, setHistoryItems] = useState([]);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
   const [depositCountdown, setDepositCountdown] = useState(0);
+  const [qrisCountdown, setQrisCountdown] = useState(0);
 
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
@@ -366,12 +367,21 @@ export default function Page() {
     }
     const expiredAt = selectedHistoryItem.expired_at
       ? Number(selectedHistoryItem.expired_at)
-      : Number(selectedHistoryItem.timestamp) + 13 * 60 * 1000;
+      : Number(selectedHistoryItem.timestamp) + 20 * 60 * 1000;
     const update = () => setDepositCountdown(Math.max(0, Math.floor((expiredAt - Date.now()) / 1000)));
     update();
     const t = setInterval(update, 1000);
     return () => clearInterval(t);
   }, [selectedHistoryItem?.id, selectedHistoryItem?.status]);
+
+  // Realtime countdown for active QRIS on deposit tab
+  useEffect(() => {
+    if (!qrisData?.expired_at) { setQrisCountdown(0); return; }
+    const update = () => setQrisCountdown(Math.max(0, Math.floor((Number(qrisData.expired_at) - Date.now()) / 1000)));
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [qrisData?.id]);
 
   const downloadQrisImage = async (imageUrl) => {
     try {
@@ -772,9 +782,13 @@ export default function Page() {
       const r = await api('deposit_create', { amount: Number(depositAmount) });
       setCreatingQris(false);
       if (r.success && r.data) {
-        const totalAmt = r.data.total || r.data.amount || depositAmount;
-        const creditAmt = r.data.diterima || r.data.amount || depositAmount;
-        setQrisData({ ...r.data, actual_amount: totalAmt, credit_amount: creditAmt });
+        const totalAmt = Number(r.data.total || r.data.amount || depositAmount);
+        const creditAmt = Number(r.data.diterima || r.data.amount || depositAmount);
+        const feeAmt = Number(r.data.fee || (totalAmt - creditAmt) || 0);
+        const expiredAt = r.data.expired_at
+          ? (isNaN(Number(r.data.expired_at)) ? new Date(r.data.expired_at).getTime() : Number(r.data.expired_at))
+          : Date.now() + 20 * 60 * 1000;
+        setQrisData({ ...r.data, actual_amount: totalAmt, credit_amount: creditAmt, fee_amount: feeAmt, expired_at: expiredAt });
       } else {
         showToast('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
       }
@@ -807,6 +821,24 @@ export default function Page() {
       fetchHistory();
     } else {
       showToast('error', 'Gagal Batal', 'Gagal membatalkan transaksi.');
+    }
+  };
+
+  const checkQrisPayment = async () => {
+    if (!qrisData?.id) return;
+    setBusy(true);
+    const r = await api('deposit_status', { deposit_id: qrisData.id });
+    setBusy(false);
+    const paid = r.success && (r.status === 'paid' || r.data?.status === 'paid' || r.data?.status === 'success' || r.status === 'success');
+    if (paid) {
+      setBalance(r.new_balance || balance);
+      setQrisData(null);
+      setDepositAmount('');
+      showToast('success', 'Berhasil', 'Deposit berhasil masuk!');
+      api('balance').then(res => res.success && setBalance(res.data.balance));
+      fetchHistory();
+    } else {
+      showToast('warning', 'Belum Masuk', 'Pembayaran belum terdeteksi. Pastikan sudah transfer.');
     }
   };
 
@@ -1391,42 +1423,90 @@ export default function Page() {
                 </button>
               </div>
             ) : (
-              <div className="deposit-card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                  Scan QRIS untuk Bayar
-                </div>
-                <div className="qris-card">
-                  <img
-                    src={qrisData.qr_image || qrisData.qr_url}
-                    alt="QRIS"
-                    onError={e => { e.target.style.opacity = '0.3'; }}
-                  />
-                </div>
-                <div className="qris-amount">{fmt(qrisData.actual_amount)}</div>
-                {qrisData.credit_amount && qrisData.credit_amount !== qrisData.actual_amount && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: 4, fontWeight: 600 }}>
-                    Saldo masuk: <span style={{ color: 'var(--green)', fontWeight: 800 }}>{fmt(qrisData.credit_amount)}</span>
-                    {' '}· Admin: <span style={{ fontWeight: 700 }}>{fmt(qrisData.actual_amount - qrisData.credit_amount)}</span>
+              <div className="qris-topup-wrap">
+                {/* Blue QRIS Card */}
+                <div className="qris-blue-card">
+                  {/* Countdown bar */}
+                  {qrisCountdown > 0 ? (
+                    <div className="qris-expiry-bar">
+                      <div className="qris-expiry-info">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M12 6v6l4 2"/></svg>
+                        <span>Batas Waktu Bayar</span>
+                      </div>
+                      <div className="qris-expiry-digits">
+                        <span className="qris-digit-box">{String(Math.floor(qrisCountdown / 60)).padStart(2,'0')[0]}</span>
+                        <span className="qris-digit-box">{String(Math.floor(qrisCountdown / 60)).padStart(2,'0')[1]}</span>
+                        <span className="qris-digit-sep">:</span>
+                        <span className="qris-digit-box">{String(qrisCountdown % 60).padStart(2,'0')[0]}</span>
+                        <span className="qris-digit-box">{String(qrisCountdown % 60).padStart(2,'0')[1]}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="qris-expiry-bar qris-expiry-expired">
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M15 9l-6 6M9 9l6 6"/></svg>
+                      <span>Waktu Pembayaran Habis</span>
+                    </div>
+                  )}
+                  {/* Header */}
+                  <div className="qris-blue-header-row">
+                    <span style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 8px', fontWeight: 900, fontSize: '0.9rem' }}>QRIS</span>
+                    <span style={{ fontWeight: 800, fontSize: '0.7rem', opacity: 0.9 }}>GPN ✦</span>
                   </div>
-                )}
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginBottom: 16 }}>
-                  Sistem mengecek pembayaran secara otomatis...
+                  <div className="qris-blue-title">CINDIGITAL GROUP</div>
+                  <div className="qris-blue-nmid">NMID: ID2025429755718</div>
+                  {/* QR Image */}
+                  <div className="qris-blue-qr-wrap">
+                    <img src={qrisData.qr_image || qrisData.qr_url} alt="QRIS" onError={e => { e.target.style.opacity='0.2'; }} />
+                  </div>
+                  {/* Total row */}
+                  <div className="qris-blue-total">
+                    <span>Total Bayar</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1rem' }}>{qrisData.actual_amount.toLocaleString('id-ID')} IDR</span>
+                  </div>
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: 8, padding: '12px 18px 0' }}>
+                    <button className="btn qris-btn-cancel" onClick={async () => {
+                      const depId = qrisData.id; const depAmt = qrisData.actual_amount || 0;
+                      setQrisData(null); setDepositAmount('');
+                      if (depId) { await api('deposit_cancel', { deposit_id: depId }); showCancelNotif(depAmt, 'Deposit telah dibatalkan'); }
+                    }}>
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                      Batalkan
+                    </button>
+                    <button className="btn qris-btn-download" onClick={() => downloadQrisImage(qrisData.qr_image || qrisData.qr_url)}>
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                      Unduh QRIS
+                    </button>
+                  </div>
+                  <div className="qris-scan-hint" style={{ padding: '10px 18px 14px' }}>
+                    Sistem memverifikasi pembayaran secara otomatis
+                  </div>
                 </div>
-                <button
-                  className="qris-cancel-btn"
-                  onClick={async () => {
-                    const depId = qrisData.id;
-                    const depAmt = qrisData.actual_amount || qrisData.amount || 0;
-                    setQrisData(null);
-                    setDepositAmount('');
-                    if (depId) {
-                      await api('deposit_cancel', { deposit_id: depId });
-                      showCancelNotif(depAmt, 'Deposit telah dibatalkan');
-                    }
-                  }}
-                >
-                  ✕ Batalkan Pembayaran
-                </button>
+
+                {/* Summary card */}
+                <div className="qris-summary-card">
+                  <div className="qris-summary-row">
+                    <span>Saldo Masuk</span>
+                    <span style={{ color: 'var(--green)', fontWeight: 900 }}>{qrisData.credit_amount.toLocaleString('id-ID')} IDR</span>
+                  </div>
+                  {qrisData.fee_amount > 0 && (
+                    <div className="qris-summary-row">
+                      <span>Biaya Admin</span>
+                      <span style={{ color: 'var(--amber)' }}>{qrisData.fee_amount.toLocaleString('id-ID')} IDR</span>
+                    </div>
+                  )}
+                  <div className="qris-summary-row qris-summary-total">
+                    <span>Total Bayar</span>
+                    <span>{qrisData.actual_amount.toLocaleString('id-ID')} IDR</span>
+                  </div>
+                  {/* Cek Pembayaran */}
+                  <button className="btn btn-primary qris-cek-btn" onClick={checkQrisPayment} disabled={busy}>
+                    {busy ? <LoadingSpinner style={{width:15,height:15}} /> : (
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    )}
+                    {busy ? 'Mengecek...' : 'Cek Pembayaran'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
