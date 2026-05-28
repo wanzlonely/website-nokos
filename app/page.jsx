@@ -706,8 +706,9 @@ export default function Page() {
       const r = await api('deposit_create', { amount: Number(depositAmount) });
       setCreatingQris(false);
       if (r.success && r.data) {
-        const actualAmt = r.data.amount || r.data.total || depositAmount;
-        setQrisData({ ...r.data, actual_amount: actualAmt });
+        const totalAmt = r.data.total || r.data.amount || depositAmount;  // jumlah yang harus dibayar (dgn fee)
+        const creditAmt = r.data.diterima || r.data.amount || depositAmount; // jumlah yang masuk ke saldo
+        setQrisData({ ...r.data, actual_amount: totalAmt, credit_amount: creditAmt });
       } else {
         showToast('error', 'Gagal', r.msg || 'Gagal membuat QRIS. Silakan cek kembali.');
       }
@@ -1307,24 +1308,28 @@ export default function Page() {
               </div>
             ) : (
               <div className="deposit-card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                   Scan QRIS untuk Bayar
                 </div>
                 <div className="qris-card">
                   <img
                     src={qrisData.qr_image || qrisData.qr_url}
                     alt="QRIS"
-                    style={{ width: '100%', maxWidth: 260, height: 'auto', display: 'block', margin: '0 auto', borderRadius: 12 }}
                     onError={e => { e.target.style.opacity = '0.3'; }}
                   />
                 </div>
-                <div className="qris-amount" style={{ fontSize: '1.5rem', fontWeight: 900, margin: '14px 0 4px' }}>{fmt(qrisData.actual_amount)}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginBottom: 20 }}>
+                <div className="qris-amount">{fmt(qrisData.actual_amount)}</div>
+                {qrisData.credit_amount && qrisData.credit_amount !== qrisData.actual_amount && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: 4, fontWeight: 600 }}>
+                    Saldo masuk: <span style={{ color: 'var(--green)', fontWeight: 800 }}>{fmt(qrisData.credit_amount)}</span>
+                    {' '}· Admin: <span style={{ fontWeight: 700 }}>{fmt(qrisData.actual_amount - qrisData.credit_amount)}</span>
+                  </div>
+                )}
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginBottom: 16 }}>
                   Sistem mengecek pembayaran secara otomatis...
                 </div>
                 <button
-                  className="btn btn-secondary"
-                  style={{ borderRadius: 'var(--r-full)', width: '100%' }}
+                  className="qris-cancel-btn"
                   onClick={async () => {
                     const depId = qrisData.id;
                     setQrisData(null);
@@ -1387,7 +1392,7 @@ export default function Page() {
           <div className="profile-wrap" style={{ animation: 'slideUp 0.4s var(--ease-out) both' }}>
             {/* Avatar card */}
             <div style={{
-              background: 'linear-gradient(135deg, var(--blue1) 0%, var(--blue2) 100%)',
+              background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
               borderRadius: 20,
               padding: '28px 20px 24px',
               margin: '0 0 20px',
