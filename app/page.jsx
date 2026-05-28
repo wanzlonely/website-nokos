@@ -1827,6 +1827,25 @@ export default function Page() {
                  Gateway pembayaran oleh <strong>RumahOTP</strong>
               </div>
 
+              {selectedHistoryItem.itemType === 'order' && selectedHistoryItem.status === 'waiting' && (
+                 <div className="receipt-actions">
+                    <button className="btn btn-secondary" disabled={busy} onClick={() => {
+                      showModal('warning', 'Batalkan Pesanan?', 'Saldo akan dikembalikan ke akun kamu secara otomatis.',
+                        () => cancelHistoryOrder(selectedHistoryItem.id, Number(selectedHistoryItem.price)));
+                    }}>Batalkan</button>
+                    <button className="btn btn-primary" style={{ marginBottom: 0 }} disabled={busy} onClick={() => setSelectedHistoryItem(null)}>Tutup</button>
+                 </div>
+              )}
+
+              {selectedHistoryItem.itemType === 'deposit' && selectedHistoryItem.status === 'pending' && (
+                 <div className="receipt-actions" style={{ marginTop: 12 }}>
+                    <button className="btn btn-secondary" disabled={busy} onClick={() => checkHistoryDeposit(selectedHistoryItem.id)}>
+                      {busy ? 'Mengecek...' : 'Cek Pembayaran'}
+                    </button>
+                    <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => setSelectedHistoryItem(null)}>Tutup</button>
+                 </div>
+              )}
+
               {selectedHistoryItem.status !== 'pending' && selectedHistoryItem.status !== 'waiting' && (
                  <div className="receipt-actions">
                     <button className="btn btn-secondary" onClick={() => window.open('https://rumahotp.io', '_blank')}>Support</button>
