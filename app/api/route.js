@@ -241,7 +241,18 @@ export async function POST(request) {
     try {
       await deductBalance(user.id, sellPrice);
     } catch (e) {
-      return NextResponse.json({ success: false, msg: e.message });
+      const isInsufficient =
+        e.message?.toLowerCase().includes('tidak cukup') ||
+        e.message?.toLowerCase().includes('insufficient') ||
+        e.message?.toLowerCase().includes('kurang');
+      return NextResponse.json({
+        success: false,
+        msg: isInsufficient
+          ? 'Saldo tidak cukup untuk melakukan pembelian ini.'
+          : e.message,
+        error_code: isInsufficient ? 'INSUFFICIENT_BALANCE' : 'ORDER_ERROR',
+        required: sellPrice,
+      });
     }
 
     const params = new URLSearchParams({
