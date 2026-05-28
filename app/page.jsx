@@ -236,10 +236,16 @@ export default function Page() {
 
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
+  const [cancelNotif, setCancelNotif] = useState(null);
 
   const showToast = (type, title, msg) => {
     setToast({ type, title, msg });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const showCancelNotif = (amount, subtitle = 'Transaksi telah dibatalkan') => {
+    setCancelNotif({ amount, subtitle });
+    setTimeout(() => setCancelNotif(null), 2800);
   };
 
   const showModal = (type, title, msg, onConfirm = null) => {
@@ -674,24 +680,26 @@ export default function Page() {
 
   const cancelOrder = async () => {
     if (!order) return;
+    const orderPrice = order.price;
     setCancelingOrder(true);
     const r = await api('order_cancel', { order_id: order.order_id });
     setCancelingOrder(false);
     if (r.success) {
       setOrder(null);
-      showToast('success', 'Dibatalkan', 'Pesanan dibatalkan dan saldo telah dikembalikan.');
+      showCancelNotif(orderPrice, 'Saldo telah dikembalikan ke akun kamu');
       api('balance').then(res => res.success && setBalance(res.data.balance));
     } else {
       showToast('error', 'Gagal Batal', r.msg || 'Terjadi kesalahan saat membatalkan.');
     }
   };
 
-  const cancelHistoryOrder = async (orderId) => {
+  const cancelHistoryOrder = async (orderId, orderPrice) => {
     setBusy(true);
     const r = await api('order_cancel', { order_id: orderId });
     setBusy(false);
     if(r.success) {
-      showToast('success', 'Dibatalkan', 'Pesanan dibatalkan dan saldo telah dikembalikan.');
+      setSelectedHistoryItem(null);
+      showCancelNotif(orderPrice, 'Saldo telah dikembalikan ke akun kamu');
       fetchHistory();
       api('balance').then(res => res.success && setBalance(res.data.balance));
     } else {
@@ -731,12 +739,13 @@ export default function Page() {
     }
   };
 
-  const cancelHistoryDeposit = async (depId) => {
+  const cancelHistoryDeposit = async (depId, depAmount) => {
     setBusy(true);
     const r = await api('deposit_cancel', { deposit_id: depId });
     setBusy(false);
     if(r.success) {
-      showToast('info', 'Dibatalkan', 'Transaksi deposit dibatalkan.');
+      setSelectedHistoryItem(null);
+      showCancelNotif(depAmount, 'Deposit telah dibatalkan');
       fetchHistory();
     } else {
       showToast('error', 'Gagal Batal', 'Gagal membatalkan transaksi.');
@@ -1092,6 +1101,23 @@ export default function Page() {
 
   return (
     <>
+      {/* Cancel Notification Overlay */}
+      {cancelNotif && (
+        <div className="cancel-notif-overlay" onClick={() => setCancelNotif(null)}>
+          <div className="cancel-notif-card">
+            <div className="cancel-notif-ripple" />
+            <div className="cancel-notif-ripple delay" />
+            <div className="cancel-notif-icon">
+              <IconCross />
+            </div>
+            <div className="cancel-notif-title">Transaksi Dibatalkan</div>
+            <div className="cancel-notif-subtitle">{cancelNotif.subtitle}</div>
+            {cancelNotif.amount > 0 && (
+              <div className="cancel-notif-amount">{fmt(cancelNotif.amount)}</div>
+            )}
+          </div>
+        </div>
+      )}
       <div className="toast-container">
         {toast && (
           <div className="toast">
@@ -1332,9 +1358,13 @@ export default function Page() {
                   className="qris-cancel-btn"
                   onClick={async () => {
                     const depId = qrisData.id;
+                    const depAmt = qrisData.actual_amount || qrisData.amount || 0;
                     setQrisData(null);
                     setDepositAmount('');
-                    if (depId) await api('deposit_cancel', { deposit_id: depId });
+                    if (depId) {
+                      await api('deposit_cancel', { deposit_id: depId });
+                      showCancelNotif(depAmt, 'Deposit telah dibatalkan');
+                    }
                   }}
                 >
                   ✕ Batalkan Pembayaran
@@ -1377,7 +1407,12 @@ export default function Page() {
                            </div>
                         </div>
                         <div className={`history-status ${statusClass}`}>
-                           <div className="history-amt">{item.itemType === 'deposit' ? '+' : '-'}{fmt(item.amount || item.price)}</div>
+                           <div className="history-amt">
+                             {item.itemType === 'deposit' ? '+' : '-'}{fmt(item.itemType === 'deposit' ? (item.base_amount || item.amount || item.price) : (item.amount || item.price))}
+                           </div>
+                           {item.itemType === 'deposit' && item.amount && item.base_amount && item.amount > item.base_amount && (
+                             <div className="history-admin-fee">Bayar: {(item.amount || 0).toLocaleString('id-ID')} IDR</div>
+                           )}
                            <span>{statusLabel}</span>
                         </div>
                      </div>
@@ -1530,6 +1565,11 @@ export default function Page() {
            <div className="receipt-card">
               <div className="receipt-total-label">Total Transaksi</div>
               <div className="receipt-total-value">{(selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
+              {selectedHistoryItem.itemType === 'deposit' && selectedHistoryItem.base_amount && selectedHistoryItem.amount > selectedHistoryItem.base_amount && (
+                <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--green)', fontWeight: 700, marginTop: -18, marginBottom: 20, background: 'var(--green-soft)', padding: '5px 14px', borderRadius: 'var(--r-full)', display: 'inline-block', marginLeft: 'auto', marginRight: 'auto', width: 'fit-content' }}>
+                  ✓ Saldo masuk: {(selectedHistoryItem.base_amount).toLocaleString('id-ID')} IDR
+                </div>
+              )}
 
               <div className="receipt-box">
                  <div className="receipt-box-icon">
@@ -1577,7 +1617,7 @@ export default function Page() {
                      <span>{(selectedHistoryItem.amount || 0).toLocaleString('id-ID')} IDR</span>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => { const depId = selectedHistoryItem.id; setSelectedHistoryItem(null); cancelHistoryDeposit(depId); }} disabled={busy}>Batalkan</button>
+                    <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => { const depId = selectedHistoryItem.id; const depAmt = selectedHistoryItem.amount || 0; setSelectedHistoryItem(null); cancelHistoryDeposit(depId, depAmt); }} disabled={busy}>Batalkan</button>
                     <button className="btn" style={{ flex: 1, background: '#fff', color: '#0b63f6' }} onClick={() => window.open(selectedHistoryItem.qr_image, '_blank')}>Download</button>
                   </div>
                   <button className="btn" style={{ width: '100%', background: 'transparent', border: '1px solid #fff', color: '#fff' }} onClick={() => { setSelectedHistoryItem(null); checkHistoryDeposit(selectedHistoryItem.id); }} disabled={busy}>Saya sudah membayar ✔</button>
@@ -1593,7 +1633,9 @@ export default function Page() {
               {selectedHistoryItem.itemType === 'deposit' && (
                 <div className="receipt-row">
                    <div className="receipt-row-label">Biaya Admin</div>
-                   <div className="receipt-row-value">{((selectedHistoryItem.amount || 0) - (selectedHistoryItem.base_amount || 0)).toLocaleString('id-ID')} IDR</div>
+                   <div className="receipt-row-value" style={{ color: ((selectedHistoryItem.amount || 0) - (selectedHistoryItem.base_amount || 0)) > 0 ? 'var(--amber)' : 'var(--text)' }}>
+                     {((selectedHistoryItem.amount || 0) - (selectedHistoryItem.base_amount || 0)).toLocaleString('id-ID')} IDR
+                   </div>
                 </div>
               )}
               <div className="receipt-row" style={{ color: 'var(--blue2)', fontWeight: 800 }}>
