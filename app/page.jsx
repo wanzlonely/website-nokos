@@ -144,11 +144,28 @@ const SvgSun = () => (
 const SvgMoon = () => (
   <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20" height="20"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
 );
-const SvgActivity = () => (
+const SvgBell = () => (
   <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" width="20" height="20">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
   </svg>
 );
+
+function OperatorIcon({ name }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const slug = name ? name.toLowerCase().replace(/\s*\([^)]*\)/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').replace(/-+/g,'-').replace(/^-|-$/g,'') : '';
+  const imgUrl = slug && name !== 'any' ? `https://assets.cindigital.id/operators/${slug}.png` : null;
+  return (
+    <div className="operator-icon-placeholder">
+      {imgUrl && !imgFailed ? (
+        <img src={imgUrl} alt={name} style={{ width:'100%', height:'100%', objectFit:'contain', padding:'3px' }} onError={() => setImgFailed(true)} />
+      ) : (
+        <span style={{ fontSize: name === 'any' ? '1.2rem' : '0.95rem', fontWeight: 900, color: 'var(--blue2)', letterSpacing: '-0.5px' }}>
+          {name === 'any' ? '✦' : (name?.[0]?.toUpperCase() || '?')}
+        </span>
+      )}
+    </div>
+  );
+}
 
 const IconCheck = () => (
   <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
@@ -241,6 +258,10 @@ export default function Page() {
   const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
   const [cancelNotif, setCancelNotif] = useState(null);
   const [paymentSuccessNotif, setPaymentSuccessNotif] = useState(null);
+  const [hasNewActivity, setHasNewActivity] = useState(false);
+
+  const tabRef = useRef(tab);
+  const lastHistoryIdRef = useRef(null);
 
   const showToast = (type, title, msg) => {
     setToast({ type, title, msg });
@@ -356,11 +377,18 @@ export default function Page() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => { tabRef.current = tab; }, [tab]);
+
   const fetchHistory = async (showLoader = false) => {
     if (showLoader) setLoadingHistory(true);
     const r = await api('history');
     if (showLoader) setLoadingHistory(false);
     if (r.success && Array.isArray(r.data)) {
+      const latestId = r.data[0]?.id || null;
+      if (lastHistoryIdRef.current !== null && latestId !== lastHistoryIdRef.current && tabRef.current !== 'activity') {
+        setHasNewActivity(true);
+      }
+      if (latestId) lastHistoryIdRef.current = latestId;
       setHistoryItems(r.data);
     }
   };
@@ -372,9 +400,7 @@ export default function Page() {
       setDepositCountdown(0);
       return;
     }
-    const expiredAt = selectedHistoryItem.expired_at
-      ? Number(selectedHistoryItem.expired_at)
-      : Number(selectedHistoryItem.timestamp) + 20 * 60 * 1000;
+    const expiredAt = Number(selectedHistoryItem.timestamp) + 20 * 60 * 1000;
     const update = () => setDepositCountdown(Math.max(0, Math.floor((expiredAt - Date.now()) / 1000)));
     update();
     const t = setInterval(update, 1000);
@@ -1311,16 +1337,25 @@ export default function Page() {
         <div className="header-row">
           <div className="header-brand">
             <div className="header-online"><div className="header-dot" /><span>Online</span></div>
-            <img
-              src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg"
-              alt="WALZ SHOP"
-              className="header-logo-img"
-              onError={e => { e.target.style.display='none'; }}
-            />
+            <div className="header-logo-wrap">
+              <div className="header-logo-circle">
+                <img
+                  src="https://i.postimg.cc/44h7sbq4/walzshop-chrome-light-95c938cb.jpg"
+                  alt="WALZ SHOP"
+                  className="header-logo-img-circle"
+                  onError={e => { e.target.style.display='none'; }}
+                />
+                <div className="header-logo-ring" />
+              </div>
+              <div className="header-brand-text">WALZ <span>SHOP</span></div>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="theme-toggle" onClick={() => setTab('activity')} title="Riwayat">
-              <SvgActivity />
+            <button className="theme-toggle" onClick={() => { setTab('activity'); setHasNewActivity(false); }} title="Riwayat">
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <SvgBell />
+                {hasNewActivity && <div className="notif-dot" />}
+              </div>
             </button>
             <button className="theme-toggle" onClick={toggleTheme} title="Ganti Tema">
               {theme === 'dark' ? <SvgSun /> : <SvgMoon />}
@@ -2034,9 +2069,7 @@ export default function Page() {
             <div className="operator-grid">
               {operators.map(op => (
                 <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op)}>
-                  <div className="operator-icon-placeholder">
-                    <span style={{ fontSize: '1.4rem' }}>📡</span>
-                  </div>
+                  <OperatorIcon name={op.name} />
                   <span>{op.name === 'any' ? 'Any / Semua' : op.name}</span>
                 </button>
               ))}
