@@ -981,7 +981,20 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-small"><img src="https://i.postimg.cc/Hx9QWWc3/walzshop-keren-light-97949c29.jpg" alt="WALZ SHOP" className="auth-logo-img" onError={e => { e.target.style.display = 'none'; }} /></div>
+
+        <div className="auth-logo-circle-wrapper">
+          <div className="header-logo-circle">
+            <img
+              src="https://i.postimg.cc/44h7sbq4/walzshop-chrome-light-95c938cb.jpg"
+              alt="WALZ SHOP"
+              className="header-logo-img-circle"
+              onError={e => { e.target.style.display = 'none'; }}
+            />
+            <div className="header-logo-ring" />
+          </div>
+          <div className="auth-logo-text">WALZ <span>SHOP</span></div>
+        </div>
+
         <div className="auth-card">
           <div className="auth-card-title">Login Kembali 👋</div>
           <div className="auth-card-sub">Masukkan email dan password akun kamu</div>
@@ -992,13 +1005,22 @@ export default function Page() {
           <div className="input-field">
             <label>Password</label>
             <div className="input-icon-wrap">
-              <input type={showPw ? 'text' : 'password'} value={pwInput} placeholder="••••••••"
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={pwInput}
+                placeholder="••••••••"
                 onChange={e => setPwInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !busy && email && pwInput && loginWithPassword()} />
+                onKeyDown={e => e.key === 'Enter' && !busy && email && pwInput && loginWithPassword()}
+              />
               <EyeToggle show={showPw} onToggle={() => setShowPw(v => !v)} />
             </div>
           </div>
-          <button className="btn btn-primary" onClick={loginWithPassword} disabled={!email || !pwInput || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
+          <button
+            className="btn btn-primary"
+            onClick={loginWithPassword}
+            disabled={!email || !pwInput || busy}
+            style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}
+          >
             {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Memproses...</> : '🔑 Masuk Sekarang'}
           </button>
           <button className="btn-ghost" onClick={() => setStep('forgot')} style={{ color: 'var(--blue2)', marginBottom: 8 }}>
@@ -1425,7 +1447,9 @@ export default function Page() {
               <div className="ao-row">
                 <div className="ao-num-wrap" onClick={() => { navigator.clipboard.writeText(order.phone_number); showToast('success', 'Tersalin', 'Nomor disalin ke clipboard'); }}>
                   {getFlag(order.country)} {order.phone_number}
-                  <svg width="18" height="18" fill="none" stroke="var(--text-3)" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                  <svg width="18" height="18" fill="none" stroke="var(--text-3)" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
                 </div>
                 <div className="ao-timer">{formatTime(orderExpiry)}</div>
               </div>
