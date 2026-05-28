@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { redis } from '@/lib/redis';
+import { redis, addBalance } from '@/lib/redis';
 
 export async function POST(request) {
   const reqId = request.headers.get('x-requested-id');
   const validId = process.env.RUMAHOTP_WEBHOOK_ID;
+
   if (validId && reqId !== validId) {
     return new NextResponse('Forbidden', { status: 403 });
   }
@@ -14,25 +15,44 @@ export async function POST(request) {
   if (category === 'callback.deposit') {
     const { diterima } = body;
     const dep = await redis.hgetall(`deposit:${id}`);
-    if (dep && dep.status !== 'credited') {
-      const email = await redis.get(`user:id:${dep.userId}`);
-      if (email) {
-        const user = await redis.hgetall(`user:email:${email}`);
-        const newBal = Number(user.balance || 0) + Number(diterima || 0);
-        await redis.hset(`user:email:${email}`, { balance: newBal });
-        await redis.hset(`deposit:${id}`, { status: 'credited', creditedAt: Date.now() });
-      }
+
+    if (dep && dep.status !== 'completed') {
+      await addBalance(dep.userId, Number(diterima || 0));
+
+      await redis.hset(`deposit:${id}`, {
+        status: 'completed',
+        completedAt: Date.now(),
+      });
     }
+
     return new NextResponse('OK', { status: 200 });
   }
 
   if (category === 'callback.number') {
     const { code, text, number } = body;
-    await redis.hset(`order:${id}`, { code, text, number, status: 'done', receivedAt: Date.now() });
+
+    await redis.hset(`order:${id}`, {
+      code,
+      text,
+      number,
+      status: 'completed',
+      completedAt: Date.now(),
+    });
+
     const order = await redis.hgetall(`order:${id}`);
+
     if (order?.userId) {
-      await redis.publish(`otp:${order.userId}`, JSON.stringify({ id, code, number, text }));
+      await redis.publish(
+        `otp:${order.userId}`,
+        JSON.stringify({
+          id,
+          code,
+          number,
+          text,
+        })
+      );
     }
+
     return new NextResponse('OK', { status: 200 });
   }
 
