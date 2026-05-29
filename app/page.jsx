@@ -2048,4 +2048,6 @@ export default function Page() {
             )}
 
             <div className="receipt-row" style={{ color: 'var(--blue2)', fontWeight: 800 }}>
-              <div className="receipt-row-label" style={{ color: 'var(--b
+  <div className="receipt-row-label" style={{ color: 'var(--blue2)' }}>Total Dibayar</div>
+  <div className="receipt-row-value">... IDR</div>
+</div>
