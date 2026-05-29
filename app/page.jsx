@@ -1917,6 +1917,130 @@ export default function Page() {
         </button>
       </nav>
 
+      {/* ── Bottom Sheet Overlay ── */}
+      <div className={`sheet-overlay ${showSheet ? 'open' : ''}`} onClick={() => setShowSheet(false)} />
+
+      {/* ── Bottom Sheet: Pilih Negara & Server ── */}
+      <div className={`bottom-sheet ${showSheet ? 'open' : ''}`}>
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          {selectedSvc && (
+            <div className="sheet-svc-row">
+              <div className="sheet-svc-icon">
+                <img src={selectedSvc.service_img} alt={selectedSvc.service_name} onError={e => { e.target.style.display = 'none'; }} />
+              </div>
+              <div>
+                <div className="sheet-svc-name">{selectedSvc.service_name}</div>
+                <div className="sheet-title">Pilih Negara & Server</div>
+              </div>
+            </div>
+          )}
+          <div className="sheet-search">
+            <input
+              value={countryQuery}
+              placeholder="Cari negara..."
+              onChange={e => setCountryQuery(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="sheet-body">
+          {loadingCountries ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
+              <LoadingSpinner />
+            </div>
+          ) : filteredCountries.length === 0 ? (
+            <div className="empty-state">
+              <span className="icon">🌍</span>
+              <p>{countryQuery ? 'Negara tidak ditemukan' : 'Stok tidak tersedia saat ini'}</p>
+            </div>
+          ) : (
+            filteredCountries.map(country => (
+              <div key={country.number_id} className="country-wrapper">
+                <div
+                  className={`country-item ${expandedCountry === country.number_id ? 'selected' : ''}`}
+                  onClick={() => setExpandedCountry(expandedCountry === country.number_id ? null : country.number_id)}
+                >
+                  <span className="country-flag">{getFlag(country.name)}</span>
+                  <span className="country-name">{country.name}</span>
+                  <div className="country-right">
+                    <div className="country-price">{fmt(country.available[0]?.price)}</div>
+                    <div className={`country-stock ${country.stock_total > 0 ? 'text-green' : 'text-red'}`}>
+                      {country.stock_total} stok
+                    </div>
+                  </div>
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+                    style={{ transform: expandedCountry === country.number_id ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.22s', flexShrink: 0, marginLeft: 4 }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+                {expandedCountry === country.number_id && (
+                  <div className="provider-list">
+                    {country.available.map(provider => (
+                      <div key={provider.provider_id} className="provider-item">
+                        <div className="provider-info">
+                          <span style={{ fontSize: '1.1rem' }}>📡</span>
+                          <div>
+                            <div className="provider-id">Server {provider.provider_id}</div>
+                            <div className="provider-price">{fmt(provider.price)}</div>
+                          </div>
+                        </div>
+                        <button
+                          className="btn-order"
+                          disabled={!!orderingProv}
+                          onClick={() => handleOrderClick(country, provider)}
+                        >
+                          {orderingProv === provider.provider_id
+                            ? <LoadingSpinner style={{ width: 14, height: 14 }} />
+                            : 'Beli'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+          <div style={{ height: 16 }} />
+        </div>
+      </div>
+
+      {/* ── Operator Selection Modal ── */}
+      <div className={`modal-overlay ${showOperatorModal ? 'open' : ''}`}>
+        <div className="modal-content popIn" style={{ maxHeight: '75vh', overflowY: 'auto', textAlign: 'left' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 900, marginBottom: 4 }}>
+            Pilih Operator
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 600, marginBottom: 16 }}>
+            {selectedOrderContext?.country?.name}
+            {selectedOrderContext?.provider?.provider_id ? ` · Server ${selectedOrderContext.provider.provider_id}` : ''}
+            {selectedOrderContext?.provider?.price ? ` · ${fmt(selectedOrderContext.provider.price)}` : ''}
+          </div>
+          {loadingOperators ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <div className="operator-grid">
+              {operators.map(op => (
+                <button key={op.id} className="operator-card" onClick={() => confirmOrder(op)}>
+                  <div className="operator-icon-placeholder">
+                    <span style={{ fontSize: '1.3rem' }}>📶</span>
+                  </div>
+                  <span>{op.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            className="btn btn-secondary"
+            style={{ marginTop: 18, width: '100%', borderRadius: 'var(--r-full)', marginBottom: 0 }}
+            onClick={() => setShowOperatorModal(false)}
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+
       {selectedHistoryItem && (
         <div className="receipt-overlay">
           <div className="receipt-nav">
