@@ -30,61 +30,84 @@ const authApi = async (path, payload) => {
 
 const fmt = n => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 const OTP_DURATION = 300;
-const FLAGS = {
-  indonesia: '🇮🇩', malaysia: '🇲🇾', 'united states': '🇺🇸', usa: '🇺🇸',
-  india: '🇮🇳', philippines: '🇵🇭', vietnam: '🇻🇳', thailand: '🇹🇭',
-  singapore: '🇸🇬', myanmar: '🇲🇲', cambodia: '🇰🇭', laos: '🇱🇦',
-  brazil: '🇧🇷', mexico: '🇲🇽', russia: '🇷🇺', china: '🇨🇳',
-  'united kingdom': '🇬🇧', uk: '🇬🇧', france: '🇫🇷', germany: '🇩🇪',
-  turkey: '🇹🇷', nigeria: '🇳🇬', ghana: '🇬🇭', kenya: '🇰🇪',
-  pakistan: '🇵🇰', bangladesh: '🇧🇩', egypt: '🇪🇬', ukraine: '🇺🇦',
-  poland: '🇵🇱', 'south africa': '🇿🇦', colombia: '🇨🇴', argentina: '🇦🇷',
-  peru: '🇵🇪', ethiopia: '🇪🇹', tanzania: '🇹🇿', netherlands: '🇳🇱',
-  spain: '🇪🇸', afghanistan: '🇦🇫', albania: '🇦🇱', algeria: '🇩🇿',
-  andorra: '🇦🇩', angola: '🇦🇴', 'antigua and barbuda': '🇦🇬', armenia: '🇦🇲',
-  australia: '🇦🇺', austria: '🇦🇹', azerbaijan: '🇦🇿', bahamas: '🇧🇸',
-  bahrain: '🇧🇭', barbados: '🇧🇧', belarus: '🇧🇾', belgium: '🇧🇪',
-  belize: '🇧🇿', benin: '🇧🇯', bhutan: '🇧🇹', bolivia: '🇧🇴',
-  'bosnia and herzegovina': '🇧🇦', botswana: '🇧🇼', brunei: '🇧🇳', bulgaria: '🇧🇬',
-  'burkina faso': '🇧🇫', burundi: '🇧🇮', 'cabo verde': '🇨🇻', 'cape verde': '🇨🇻',
-  cameroon: '🇨🇲', canada: '🇨🇦', 'central african republic': '🇨🇫', chad: '🇹🇩',
-  chile: '🇨🇱', comoros: '🇰🇲', congo: '🇨🇬', 'costa rica': '🇨🇷',
-  croatia: '🇭🇷', cuba: '🇨🇺', cyprus: '🇨🇾', czechia: '🇨🇿',
-  'czech republic': '🇨🇿', denmark: '🇩🇰', djibouti: '🇩🇯', dominica: '🇩🇲',
-  'dominican republic': '🇩🇴', 'democratic republic of the congo': '🇨🇩', ecuador: '🇪🇨', 'el salvador': '🇸🇻',
-  'equatorial guinea': '🇬🇶', eritrea: '🇪🇷', estonia: '🇪🇪', eswatini: '🇸🇿',
-  fiji: '🇫🇯', finland: '🇫🇮', gabon: '🇬🇦', gambia: '🇬🇲',
-  georgia: '🇬🇪', greece: '🇬🇷', grenada: '🇬🇩', guatemala: '🇬🇹',
-  guinea: '🇬🇳', 'guinea-bissau': '🇬🇼', guyana: '🇬🇾', haiti: '🇭🇹',
-  honduras: '🇭🇳', hungary: '🇭🇺', iceland: '🇮🇸', iran: '🇮🇷',
-  iraq: '🇮🇶', ireland: '🇮🇪', israel: '🇮🇱', italy: '🇮🇹',
-  'ivory coast': '🇨🇮', "cote d'ivoire": '🇨🇮', jamaica: '🇯🇲', japan: '🇯🇵',
-  jordan: '🇯🇴', kazakhstan: '🇰🇿', kiribati: '🇰🇮', kuwait: '🇰🇼',
-  kyrgyzstan: '🇰🇬', latvia: '🇱🇻', lebanon: '🇱🇧', lesotho: '🇱🇸',
-  liberia: '🇱🇷', libya: '🇱🇾', liechtenstein: '🇱🇮', lithuania: '🇱🇹',
-  luxembourg: '🇱🇺', madagascar: '🇲🇬', malawi: '🇲🇼', maldives: '🇲🇻',
-  mali: '🇲🇱', malta: '🇲🇹', 'marshall islands': '🇲🇭', mauritania: '🇲🇷',
-  mauritius: '🇲🇺', micronesia: '🇫🇲', moldova: '🇲🇩', monaco: '🇲🇨',
-  mongolia: '🇲🇳', montenegro: '🇲🇪', morocco: '🇲🇦', mozambique: '🇲🇿',
-  namibia: '🇳🇦', nauru: '🇳🇷', nepal: '🇳🇵', 'new zealand': '🇳🇿',
-  nicaragua: '🇳🇮', niger: '🇳🇪', 'north korea': '🇰🇵', 'north macedonia': '🇲🇰',
-  norway: '🇳🇴', oman: '🇴🇲', palau: '🇵🇼', palestine: '🇵🇸',
-  panama: '🇵🇦', 'papua new guinea': '🇵🇬', paraguay: '🇵🇾', portugal: '🇵🇹',
-  qatar: '🇶🇦', romania: '🇷🇴', rwanda: '🇷🇼', 'saint kitts and nevis': '🇰🇳',
-  'saint lucia': '🇱🇨', 'saint vincent and the grenadines': '🇻🇨', samoa: '🇼🇸', 'san marino': '🇸🇲',
-  'sao tome and principe': '🇸🇹', 'saudi arabia': '🇸🇦', senegal: '🇸🇳', serbia: '🇷🇸',
-  seychelles: '🇸🇨', 'sierra leone': '🇸🇱', slovakia: '🇸🇰', slovenia: '🇸🇮',
-  'solomon islands': '🇸🇧', somalia: '🇸🇴', 'south korea': '🇰🇷', korea: '🇰🇷',
-  'south sudan': '🇸🇸', 'sri lanka': '🇱🇰', sudan: '🇸🇩', suriname: '🇸🇷',
-  sweden: '🇸🇪', switzerland: '🇨🇭', syria: '🇸🇾', taiwan: '🇹🇼',
-  tajikistan: '🇹🇯', 'timor-leste': '🇹🇱', 'east timor': '🇹🇱', togo: '🇹🇬',
-  tonga: '🇹🇴', 'trinidad and tobago': '🇹🇹', tunisia: '🇹🇳', turkmenistan: '🇹🇲',
-  tuvalu: '🇹🇻', uganda: '🇺🇬', 'united arab emirates': '🇦🇪', uae: '🇦🇪',
-  uruguay: '🇺🇾', uzbekistan: '🇺🇿', vanuatu: '🇻🇺', 'vatican city': '🇻🇦',
-  vatican: '🇻🇦', venezuela: '🇻🇪', yemen: '🇾🇪', zambia: '🇿🇲',
-  zimbabwe: '🇿🇼',
+const COUNTRY_ISO = {
+  indonesia: 'id', malaysia: 'my', 'united states': 'us', usa: 'us',
+  india: 'in', philippines: 'ph', vietnam: 'vn', thailand: 'th',
+  singapore: 'sg', myanmar: 'mm', cambodia: 'kh', laos: 'la',
+  brazil: 'br', mexico: 'mx', russia: 'ru', china: 'cn',
+  'united kingdom': 'gb', uk: 'gb', france: 'fr', germany: 'de',
+  turkey: 'tr', nigeria: 'ng', ghana: 'gh', kenya: 'ke',
+  pakistan: 'pk', bangladesh: 'bd', egypt: 'eg', ukraine: 'ua',
+  poland: 'pl', 'south africa': 'za', colombia: 'co', argentina: 'ar',
+  peru: 'pe', ethiopia: 'et', tanzania: 'tz', netherlands: 'nl',
+  spain: 'es', afghanistan: 'af', albania: 'al', algeria: 'dz',
+  andorra: 'ad', angola: 'ao', armenia: 'am', australia: 'au',
+  austria: 'at', azerbaijan: 'az', bahamas: 'bs', bahrain: 'bh',
+  barbados: 'bb', belarus: 'by', belgium: 'be', belize: 'bz',
+  benin: 'bj', bhutan: 'bt', bolivia: 'bo', 'bosnia and herzegovina': 'ba',
+  botswana: 'bw', brunei: 'bn', bulgaria: 'bg', 'burkina faso': 'bf',
+  burundi: 'bi', 'cabo verde': 'cv', 'cape verde': 'cv', cameroon: 'cm',
+  canada: 'ca', 'central african republic': 'cf', chad: 'td', chile: 'cl',
+  comoros: 'km', congo: 'cg', 'costa rica': 'cr', croatia: 'hr',
+  cuba: 'cu', cyprus: 'cy', czechia: 'cz', 'czech republic': 'cz',
+  denmark: 'dk', djibouti: 'dj', dominica: 'dm', 'dominican republic': 'do',
+  'democratic republic of the congo': 'cd', ecuador: 'ec', 'el salvador': 'sv',
+  'equatorial guinea': 'gq', eritrea: 'er', estonia: 'ee', eswatini: 'sz',
+  fiji: 'fj', finland: 'fi', gabon: 'ga', gambia: 'gm', georgia: 'ge',
+  greece: 'gr', grenada: 'gd', guatemala: 'gt', guinea: 'gn',
+  'guinea-bissau': 'gw', guyana: 'gy', haiti: 'ht', honduras: 'hn',
+  hungary: 'hu', iceland: 'is', iran: 'ir', iraq: 'iq', ireland: 'ie',
+  israel: 'il', italy: 'it', "ivory coast": 'ci', "cote d'ivoire": 'ci',
+  jamaica: 'jm', japan: 'jp', jordan: 'jo', kazakhstan: 'kz', kiribati: 'ki',
+  kuwait: 'kw', kyrgyzstan: 'kg', latvia: 'lv', lebanon: 'lb', lesotho: 'ls',
+  liberia: 'lr', libya: 'ly', liechtenstein: 'li', lithuania: 'lt',
+  luxembourg: 'lu', madagascar: 'mg', malawi: 'mw', maldives: 'mv',
+  mali: 'ml', malta: 'mt', 'marshall islands': 'mh', mauritania: 'mr',
+  mauritius: 'mu', micronesia: 'fm', moldova: 'md', monaco: 'mc',
+  mongolia: 'mn', montenegro: 'me', morocco: 'ma', mozambique: 'mz',
+  namibia: 'na', nauru: 'nr', nepal: 'np', 'new zealand': 'nz',
+  nicaragua: 'ni', niger: 'ne', 'north korea': 'kp', 'north macedonia': 'mk',
+  norway: 'no', oman: 'om', palau: 'pw', palestine: 'ps', panama: 'pa',
+  'papua new guinea': 'pg', paraguay: 'py', portugal: 'pt', qatar: 'qa',
+  romania: 'ro', rwanda: 'rw', 'saint kitts and nevis': 'kn',
+  'saint lucia': 'lc', 'saint vincent and the grenadines': 'vc',
+  samoa: 'ws', 'san marino': 'sm', 'sao tome and principe': 'st',
+  'saudi arabia': 'sa', senegal: 'sn', serbia: 'rs', seychelles: 'sc',
+  'sierra leone': 'sl', slovakia: 'sk', slovenia: 'si',
+  'solomon islands': 'sb', somalia: 'so', 'south korea': 'kr', korea: 'kr',
+  'south sudan': 'ss', 'sri lanka': 'lk', sudan: 'sd', suriname: 'sr',
+  sweden: 'se', switzerland: 'ch', syria: 'sy', taiwan: 'tw',
+  tajikistan: 'tj', 'timor-leste': 'tl', 'east timor': 'tl', togo: 'tg',
+  tonga: 'to', 'trinidad and tobago': 'tt', tunisia: 'tn', turkmenistan: 'tm',
+  tuvalu: 'tv', uganda: 'ug', 'united arab emirates': 'ae', uae: 'ae',
+  uruguay: 'uy', uzbekistan: 'uz', vanuatu: 'vu', 'vatican city': 'va',
+  vatican: 'va', venezuela: 've', yemen: 'ye', zambia: 'zm', zimbabwe: 'zw',
 };
-const getFlag = name => FLAGS[name?.toLowerCase()] || '🌐';
+
+function FlagImg({ name, size = 28, style: customStyle = {} }) {
+  const iso = COUNTRY_ISO[name?.toLowerCase()];
+  const [failed, setFailed] = useState(false);
+  if (!iso || failed) {
+    return <span style={{ fontSize: size * 0.85, lineHeight: 1, display: 'inline-block', ...customStyle }}>🌐</span>;
+  }
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${iso}.png`}
+      alt={name || 'flag'}
+      onError={() => setFailed(true)}
+      style={{
+        width: size,
+        height: Math.round(size * 0.67),
+        objectFit: 'cover',
+        borderRadius: 3,
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+        ...customStyle,
+      }}
+    />
+  );
+}
 
 const formatTime = secs => {
   const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -257,6 +280,7 @@ export default function Page() {
   const [modal, setModal] = useState({ show: false, type: 'info', title: '', msg: '', onConfirm: null });
   const [cancelNotif, setCancelNotif] = useState(null);
   const [paymentSuccessNotif, setPaymentSuccessNotif] = useState(null);
+  const [insufficientModal, setInsufficientModal] = useState(null);
   const [hasNewActivity, setHasNewActivity] = useState(false);
 
   const tabRef = useRef(tab);
@@ -470,7 +494,7 @@ export default function Page() {
             fetchHistory();
           }
         } catch (error) { }
-      }, 3000);
+      }, 2000);
     }
     return () => clearInterval(interval);
   }, [selectedHistoryItem]);
@@ -491,7 +515,7 @@ export default function Page() {
             api('balance').then(res => res.success && setBalance(res.data.balance));
           }
         } catch (error) { }
-      }, 3000);
+      }, 2000);
     }
     return () => clearInterval(interval);
   }, [qrisData]);
@@ -511,7 +535,7 @@ export default function Page() {
             showToast('warning', 'Dibatalkan', 'Pesanan telah dibatalkan.');
           }
         } catch (error) { }
-      }, 5000);
+      }, 3000);
     }
     return () => clearInterval(interval);
   }, [order]);
@@ -774,10 +798,7 @@ export default function Page() {
           setShowSheet(false);
           const required = r.required ? Number(r.required) : null;
           const kekurangan = required ? Math.max(0, required - balance) : null;
-          const detailMsg = kekurangan && kekurangan > 0
-            ? `Saldo kamu ${fmt(balance)}, butuh ${fmt(required)}. Kekurangan ${fmt(kekurangan)}. Top up sekarang yuk!`
-            : 'Saldo kamu kurang untuk membeli nomor ini. Yuk top up dulu agar bisa bertransaksi dengan lancar.';
-          showModal('warning', 'Saldo Tidak Cukup!', detailMsg, () => setTab('deposit'));
+          setInsufficientModal({ balance, required, kekurangan });
         } else {
           showToast('error', 'Pesanan Gagal', r.msg || 'Stock penyedia habis, tunggu beberapa saat.');
         }
@@ -1442,6 +1463,68 @@ export default function Page() {
           </div>
         </div>
       )}
+      {insufficientModal && (
+        <div className="modal-overlay open" onClick={() => setInsufficientModal(null)}>
+          <div className="modal-content popIn" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', padding: '32px 24px', maxWidth: 320, borderRadius: 24 }}>
+            <div style={{
+              width: 80, height: 80, borderRadius: '50%',
+              background: 'linear-gradient(135deg, rgba(255,179,64,0.18) 0%, rgba(255,64,96,0.18) 100%)',
+              border: '2px solid rgba(255,179,64,0.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 18px', fontSize: '2.2rem',
+              boxShadow: '0 0 32px rgba(255,179,64,0.15)',
+              animation: 'popIn 0.4s var(--ease-out)',
+            }}>💳</div>
+
+            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--amber)', marginBottom: 6, fontFamily: 'var(--font-display)', letterSpacing: '-0.5px' }}>
+              Saldo Tidak Cukup!
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginBottom: 22, lineHeight: 1.7 }}>
+              {insufficientModal.kekurangan > 0 ? (
+                <>Saldo saat ini <strong style={{ color: 'var(--text)' }}>{fmt(insufficientModal.balance)}</strong>, butuh <strong style={{ color: 'var(--amber)' }}>{fmt(insufficientModal.required)}</strong>.<br />Kekurangan <strong style={{ color: 'var(--red)' }}>{fmt(insufficientModal.kekurangan)}</strong>.</>
+              ) : 'Saldo kamu kurang untuk membeli nomor ini. Top up sekarang!'}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 22 }}>
+              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: '12px 8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ fontSize: '0.58rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 5 }}>Saldo Kamu</div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 900, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{fmt(insufficientModal.balance)}</div>
+              </div>
+              {insufficientModal.required > 0 && (
+                <div style={{ background: 'rgba(255,179,64,0.08)', borderRadius: 12, padding: '12px 8px', border: '1px solid rgba(255,179,64,0.2)' }}>
+                  <div style={{ fontSize: '0.58rem', color: 'var(--amber)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 5 }}>Dibutuhkan</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 900, color: 'var(--amber)', fontFamily: 'var(--font-mono)' }}>{fmt(insufficientModal.required)}</div>
+                </div>
+              )}
+            </div>
+
+            {insufficientModal.kekurangan > 0 && (
+              <div style={{ background: 'linear-gradient(90deg, rgba(255,64,96,0.1), rgba(255,179,64,0.1))', borderRadius: 10, padding: '8px 14px', marginBottom: 18, border: '1px solid rgba(255,64,96,0.2)' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-2)', fontWeight: 600 }}>
+                  Perlu top up minimal <strong style={{ color: 'var(--red)', fontFamily: 'var(--font-mono)' }}>{fmt(insufficientModal.kekurangan)}</strong>
+                </div>
+              </div>
+            )}
+
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', borderRadius: 'var(--r-full)', height: 52, fontSize: '0.95rem', fontWeight: 800, marginBottom: 10, background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}
+              onClick={() => { setInsufficientModal(null); setTab('deposit'); }}
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" style={{ marginRight: 6 }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+              Top Up Sekarang
+            </button>
+            <button
+              className="btn btn-secondary"
+              style={{ width: '100%', borderRadius: 'var(--r-full)', height: 42, fontSize: '0.82rem', opacity: 0.7 }}
+              onClick={() => setInsufficientModal(null)}
+            >
+              Nanti Saja
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="toast-container">
         {toast && (
           <div className="toast">
@@ -1545,64 +1628,170 @@ export default function Page() {
         )}
 
         {tab === 'virtual' && order && (
-          <div className="active-order-wrap">
-            <div className="ao-header">
-              <div className="ao-title">Pesanan Pending</div>
-              <button className="ao-refresh" onClick={() => api('balance').then(r => r.success && setBalance(r.data.balance))}>
-                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              </button>
-            </div>
-            <div className="ao-body">
-              <div className="ao-row">
-                <div className="ao-num-wrap" onClick={() => { navigator.clipboard.writeText(order.phone_number); showToast('success', 'Tersalin', 'Nomor disalin ke clipboard'); }}>
-                  {getFlag(order.country)} {order.phone_number}
-                  <svg width="18" height="18" fill="none" stroke="var(--text-3)" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                </div>
-                <div className="ao-timer">{formatTime(orderExpiry)}</div>
-              </div>
-              <div className="ao-row">
-                <div className="ao-prov-wrap">
-                  <span style={{ fontSize: '1.2rem' }}>📡</span> {order.operator || 'Any'}
-                </div>
-                <div className="ao-price">{fmt(order.price)}</div>
-              </div>
+          <div style={{ animation: 'slideUp 0.4s var(--ease-out) both', paddingBottom: 20 }}>
 
-              <div className="ao-status-box">
-                <div className="ao-status-top">
-                  <div className="ao-svc-name">
-                    <img src={order.service_img} alt="" style={{ width: 24, height: 24, borderRadius: 4 }} />
-                    {order.service_name}
-                  </div>
-                  {order.otp_code ? (
-                    <div className="ao-status-text" style={{ color: 'var(--green)' }}>Selesai <IconCheck /></div>
-                  ) : (
-                    <div className="ao-status-text">Menunggu <IconClock /></div>
-                  )}
-                </div>
-
-                {order.otp_code ? (
-                  <div style={{ background: 'var(--green-soft)', padding: '16px', borderRadius: '12px', marginTop: '10px' }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.4rem', fontWeight: 900, color: 'var(--green)', letterSpacing: '4px', textAlign: 'center' }}>{order.otp_code}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', textAlign: 'center', marginTop: '4px', fontWeight: 600 }}>{order.otp_msg}</div>
-                  </div>
-                ) : (
-                  <div className="ao-status-desc">
-                    {cancelCooldown > 0 ? `Tunggu ${formatTime(cancelCooldown)} sebelum klik batal.` : 'Kamu sekarang bisa membatalkan pesanan ini.'}
-                  </div>
-                )}
+            {/* ── Virtual SIM Card ── */}
+            <div style={{
+              background: 'linear-gradient(140deg, #0d1b35 0%, #1a2f5c 55%, #0d1b35 100%)',
+              borderRadius: 22,
+              padding: '22px 20px 18px',
+              marginBottom: 14,
+              position: 'relative',
+              overflow: 'hidden',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)',
+              border: '1px solid rgba(79,140,255,0.18)',
+            }}>
+              {/* Decorative blobs */}
+              <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, background: 'radial-gradient(circle, rgba(79,140,255,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: -30, left: -30, width: 100, height: 100, background: 'radial-gradient(circle, rgba(0,232,122,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+              {/* SIM chip decoration */}
+              <div style={{ position: 'absolute', top: 18, right: 20, width: 36, height: 28, borderRadius: 5, background: 'linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.08))', border: '1px solid rgba(255,215,0,0.2)', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 2, padding: 4 }}>
+                {[...Array(4)].map((_, i) => <div key={i} style={{ background: 'rgba(255,215,0,0.2)', borderRadius: 2 }} />)}
               </div>
 
-              <div className="ao-actions">
-                <button className="ao-btn ao-btn-lagi" onClick={() => setOrder(null)}>
-                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  Beli lagi
+              {/* Header: flag + country + service */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <div style={{ position: 'relative' }}>
+                  <FlagImg name={order.country} size={36} style={{ borderRadius: 6, boxShadow: '0 3px 10px rgba(0,0,0,0.4)' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Negara</div>
+                  <div style={{ fontSize: '1rem', color: '#fff', fontWeight: 800, letterSpacing: '-0.3px' }}>{order.country}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '6px 11px', backdropFilter: 'blur(4px)' }}>
+                  <img src={order.service_img} alt="" style={{ width: 20, height: 20, borderRadius: 4 }} onError={e => { e.target.style.display = 'none'; }} />
+                  <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 700 }}>{order.service_name}</span>
+                </div>
+              </div>
+
+              {/* Phone number label */}
+              <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.35)', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 5 }}>NOMOR VIRTUAL</div>
+
+              {/* Phone number + copy */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <div
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: '1.45rem', fontWeight: 900, color: '#fff', letterSpacing: '1.5px', cursor: 'pointer', flex: 1, textShadow: '0 0 20px rgba(79,140,255,0.5)' }}
+                  onClick={() => { navigator.clipboard.writeText(order.phone_number); showToast('success', 'Tersalin', 'Nomor disalin ke clipboard'); }}
+                >
+                  {order.phone_number}
+                </div>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(order.phone_number); showToast('success', 'Tersalin', 'Nomor berhasil disalin'); }}
+                  style={{ background: 'rgba(79,140,255,0.2)', border: '1px solid rgba(79,140,255,0.35)', borderRadius: 9, padding: '7px 13px', color: '#7ab3ff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                  Salin
                 </button>
-                {!order.otp_code && (
-                  <button className="ao-btn ao-btn-batal" disabled={cancelCooldown > 0 || cancelingOrder} onClick={cancelOrder}>
-                    {cancelingOrder ? <LoadingSpinner style={{ width: 18, height: 18 }} /> : <><svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg> Batal</>}
-                  </button>
-                )}
               </div>
+
+              {/* Info pills */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '8px 10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Operator</div>
+                  <div style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 700, textTransform: 'capitalize' }}>{order.operator || 'Any'}</div>
+                </div>
+                <div style={{ flex: 1, background: 'rgba(255,179,64,0.07)', borderRadius: 10, padding: '8px 10px', border: '1px solid rgba(255,179,64,0.15)' }}>
+                  <div style={{ fontSize: '0.55rem', color: 'rgba(255,179,64,0.6)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Harga</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--amber)', fontWeight: 800 }}>{fmt(order.price)}</div>
+                </div>
+                <div style={{ flex: 1, background: orderExpiry < 120 ? 'rgba(255,64,96,0.08)' : 'rgba(0,232,122,0.06)', borderRadius: 10, padding: '8px 10px', border: `1px solid ${orderExpiry < 120 ? 'rgba(255,64,96,0.2)' : 'rgba(0,232,122,0.15)'}` }}>
+                  <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Sisa Waktu</div>
+                  <div style={{ fontSize: '0.8rem', color: orderExpiry < 120 ? 'var(--red)' : 'var(--green)', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>{formatTime(orderExpiry)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── OTP Status Card ── */}
+            {order.otp_code ? (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(0,232,122,0.1) 0%, rgba(0,232,122,0.05) 100%)',
+                border: '1px solid rgba(0,232,122,0.3)',
+                borderRadius: 18,
+                padding: '22px 20px',
+                marginBottom: 14,
+                textAlign: 'center',
+                boxShadow: '0 4px 20px rgba(0,232,122,0.08)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', boxShadow: '0 0 12px rgba(0,232,122,0.5)' }}>
+                    <IconCheck />
+                  </div>
+                  <span style={{ color: 'var(--green)', fontWeight: 800, fontSize: '0.95rem' }}>OTP Berhasil Diterima!</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginBottom: 14 }}>
+                  {order.otp_code.split('').map((digit, i) => (
+                    <div key={i} style={{
+                      width: 40, height: 50,
+                      background: 'rgba(0,232,122,0.12)',
+                      border: '1.5px solid rgba(0,232,122,0.4)',
+                      borderRadius: 10,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '1.6rem', fontWeight: 900, color: 'var(--green)',
+                      fontFamily: 'var(--font-mono)',
+                      boxShadow: '0 2px 8px rgba(0,232,122,0.15)',
+                      animation: `slideUp 0.3s ${i * 0.06}s var(--ease-out) both`,
+                    }}>{digit}</div>
+                  ))}
+                </div>
+                {order.otp_msg && <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: 14, fontStyle: 'italic' }}>{order.otp_msg}</div>}
+                <button
+                  onClick={() => { navigator.clipboard.writeText(order.otp_code); showToast('success', 'Tersalin', 'Kode OTP berhasil disalin'); }}
+                  style={{ background: 'rgba(0,232,122,0.15)', border: '1.5px solid rgba(0,232,122,0.4)', borderRadius: 12, padding: '9px 22px', color: 'var(--green)', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}
+                >
+                  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                  Salin Kode OTP
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1.5px dashed rgba(255,255,255,0.1)',
+                borderRadius: 18,
+                padding: '26px 20px',
+                marginBottom: 14,
+                textAlign: 'center',
+              }}>
+                <div style={{ position: 'relative', width: 60, height: 60, margin: '0 auto 14px' }}>
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2.5px solid rgba(79,140,255,0.25)', animation: 'spin 2s linear infinite' }} />
+                  <div style={{ position: 'absolute', inset: 3, borderRadius: '50%', border: '2px solid rgba(79,140,255,0.15)', animation: 'spin 3s linear infinite reverse' }} />
+                  <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', background: 'rgba(79,140,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--blue2)' }}>
+                    <IconClock />
+                  </div>
+                </div>
+                <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 5, fontSize: '0.95rem' }}>Menunggu SMS masuk...</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', lineHeight: 1.6 }}>
+                  {cancelCooldown > 0
+                    ? <>Berlaku selama <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--blue2)', fontWeight: 700 }}>{formatTime(cancelCooldown)}</span> lagi</>
+                    : 'Kamu sudah bisa membatalkan pesanan ini.'}
+                </div>
+              </div>
+            )}
+
+            {/* ── Action Buttons ── */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                className="btn btn-secondary"
+                style={{ flex: 1, borderRadius: 14, height: 48 }}
+                onClick={() => setOrder(null)}
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ marginRight: 5 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                Beli Lagi
+              </button>
+              {!order.otp_code && (
+                <button
+                  className="btn"
+                  style={{ flex: 1, borderRadius: 14, height: 48, background: cancelCooldown > 0 ? 'rgba(255,64,96,0.06)' : 'rgba(255,64,96,0.12)', border: '1.5px solid rgba(255,64,96,0.25)', color: 'var(--red)', fontWeight: 700, cursor: cancelCooldown > 0 ? 'not-allowed' : 'pointer', opacity: cancelCooldown > 0 ? 0.65 : 1 }}
+                  disabled={cancelCooldown > 0 || cancelingOrder}
+                  onClick={cancelOrder}
+                >
+                  {cancelingOrder ? <LoadingSpinner style={{ width: 18, height: 18 }} /> : (
+                    <>
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ marginRight: 5 }}><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                      {cancelCooldown > 0 ? formatTime(cancelCooldown) : 'Batalkan'}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1960,7 +2149,7 @@ export default function Page() {
                   className={`country-item ${expandedCountry === country.number_id ? 'selected' : ''}`}
                   onClick={() => setExpandedCountry(expandedCountry === country.number_id ? null : country.number_id)}
                 >
-                  <span className="country-flag">{getFlag(country.name)}</span>
+                  <span className="country-flag"><FlagImg name={country.name} size={26} /></span>
                   <span className="country-name">{country.name}</span>
                   <div className="country-right">
                     <div className="country-price">{fmt(country.available[0]?.price)}</div>
