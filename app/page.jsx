@@ -730,13 +730,7 @@ export default function Page() {
       const filtered = r.data
         .map(c => ({
           ...c,
-          available: c.pricelist?.filter(p => p.available) || [],
-          unavailable: c.pricelist?.filter(p => !p.available) || [],
-          allProviders: (c.pricelist || []).sort((a, b) => {
-            if (a.available && !b.available) return -1;
-            if (!a.available && b.available) return 1;
-            return a.price - b.price;
-          }),
+          available: (c.pricelist?.filter(p => p.available) || []).sort((a, b) => a.price - b.price),
         }))
         .filter(c => c.available.length > 0)
         .sort((a, b) => {
@@ -2159,11 +2153,8 @@ export default function Page() {
                   <span className="country-name">{country.name}</span>
                   <div className="country-right">
                     <div className="country-price">{fmt(country.available[0]?.price)}</div>
-                    <div className={`country-stock ${country.stock_total > 0 ? 'text-green' : 'text-red'}`}>
-                      {country.available.length > 0
-                        ? <span style={{ color: 'var(--green)' }}>✓ {country.available.length} server ready</span>
-                        : <span style={{ color: 'var(--red)' }}>Semua habis</span>
-                      }
+                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--green)' }}>
+                      ✓ {country.available.length} server · {country.stock_total} stok
                     </div>
                   </div>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
@@ -2173,42 +2164,35 @@ export default function Page() {
                 </div>
                 {expandedCountry === country.number_id && (
                   <div className="provider-list">
-                    {(country.allProviders || country.available).map(provider => {
-                      const isAvail = provider.available;
-                      return (
-                        <div key={provider.provider_id} className="provider-item" style={{ opacity: isAvail ? 1 : 0.5, border: isAvail ? '1px solid var(--border)' : '1px solid rgba(255,64,96,0.15)' }}>
-                          <div className="provider-info">
-                            <span style={{ fontSize: '1.1rem' }}>{isAvail ? '📡' : '🚫'}</span>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <div className="provider-id">Server {provider.provider_id}</div>
-                                <span style={{
-                                  fontSize: '0.6rem', fontWeight: 800, padding: '2px 7px',
-                                  borderRadius: 99,
-                                  background: isAvail ? 'rgba(0,232,122,0.15)' : 'rgba(255,64,96,0.12)',
-                                  color: isAvail ? 'var(--green)' : 'var(--red)',
-                                  border: `1px solid ${isAvail ? 'rgba(0,232,122,0.3)' : 'rgba(255,64,96,0.25)'}`,
-                                  letterSpacing: '0.03em',
-                                }}>
-                                  {isAvail ? '● Ready' : '● Habis'}
-                                </span>
-                              </div>
-                              <div className="provider-price">{fmt(provider.price)}</div>
+                    {country.available.map(provider => (
+                      <div key={provider.provider_id} className="provider-item">
+                        <div className="provider-info">
+                          <span style={{ fontSize: '1.1rem' }}>📡</span>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div className="provider-id">Server {provider.provider_id}</div>
+                              <span style={{
+                                fontSize: '0.58rem', fontWeight: 800, padding: '2px 6px',
+                                borderRadius: 99,
+                                background: 'rgba(0,232,122,0.15)',
+                                color: 'var(--green)',
+                                border: '1px solid rgba(0,232,122,0.35)',
+                              }}>● READY</span>
                             </div>
+                            <div className="provider-price">{fmt(provider.price)}</div>
                           </div>
-                          <button
-                            className="btn-order"
-                            disabled={!!orderingProv || !isAvail}
-                            onClick={() => isAvail && handleOrderClick(country, provider)}
-                            style={!isAvail ? { borderColor: 'var(--red)', color: 'var(--red)', opacity: 0.5, cursor: 'not-allowed' } : {}}
-                          >
-                            {orderingProv === provider.provider_id
-                              ? <LoadingSpinner style={{ width: 14, height: 14 }} />
-                              : isAvail ? 'Beli' : 'Habis'}
-                          </button>
                         </div>
-                      );
-                    })}
+                        <button
+                          className="btn-order"
+                          disabled={!!orderingProv}
+                          onClick={() => handleOrderClick(country, provider)}
+                        >
+                          {orderingProv === provider.provider_id
+                            ? <LoadingSpinner style={{ width: 14, height: 14 }} />
+                            : 'Beli'}
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
