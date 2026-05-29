@@ -2151,10 +2151,35 @@ export default function Page() {
                 >
                   <span className="country-flag"><FlagImg name={country.name} size={26} /></span>
                   <span className="country-name">{country.name}</span>
-                  <div className="country-right">
-                    <div className="country-price">{fmt(country.available[0]?.price)}</div>
-                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--green)' }}>
-                      ✓ {country.available.length} server · {country.stock_total} stok
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
+                    <div style={{
+                      fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 900,
+                      color: '#fff', background: 'linear-gradient(135deg, var(--blue2), var(--cyan))',
+                      padding: '3px 9px', borderRadius: 8,
+                      boxShadow: '0 2px 8px rgba(79,140,255,0.35)',
+                      letterSpacing: '0.01em',
+                    }}>{fmt(country.available[0]?.price)}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{
+                        display: 'flex', alignItems: 'center', gap: 3,
+                        fontSize: '0.58rem', fontWeight: 700,
+                        color: 'var(--green)',
+                        background: 'rgba(0,232,122,0.12)',
+                        border: '1px solid rgba(0,232,122,0.25)',
+                        padding: '2px 6px', borderRadius: 99,
+                      }}>
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="var(--green)"><circle cx="4" cy="4" r="3"/></svg>
+                        {country.available.length} server
+                      </span>
+                      <span style={{
+                        fontSize: '0.58rem', fontWeight: 700,
+                        color: 'var(--text-3)',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid var(--border)',
+                        padding: '2px 6px', borderRadius: 99,
+                      }}>
+                        {country.stock_total} stok
+                      </span>
                     </div>
                   </div>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
