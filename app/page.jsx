@@ -150,14 +150,13 @@ const SvgBell = () => (
   </svg>
 );
 
-function OperatorIcon({ name }) {
+function OperatorIcon({ name, imageUrl }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const slug = name ? name.toLowerCase().replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '') : '';
-  const imgUrl = slug && name !== 'any' ? `https://assets.cindigital.id/operators/${slug}.png` : null;
+  const hasImg = imageUrl && name !== 'any';
   return (
     <div className="operator-icon-placeholder">
-      {imgUrl && !imgFailed ? (
-        <img src={imgUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '3px' }} onError={() => setImgFailed(true)} />
+      {hasImg && !imgFailed ? (
+        <img src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '3px' }} onError={() => setImgFailed(true)} />
       ) : (
         <span style={{ fontSize: name === 'any' ? '1.2rem' : '0.95rem', fontWeight: 900, color: 'var(--blue2)', letterSpacing: '-0.5px' }}>
           {name === 'any' ? '✦' : (name?.[0]?.toUpperCase() || '?')}
@@ -936,27 +935,49 @@ export default function Page() {
 
   if (step === 'welcome') {
     return (
-      <div className="auth-screen welcome-bg">
-        <div className="welcome-wrapper floating">
-          <div className="auth-logo-badge"><div className="auth-logo-dot" /><span>SISTEM ONLINE</span></div>
-          <div className="walz-hero-logo">
-            <img
-              src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
-              alt="WALZ SHOP"
-              className="walz-hero-img"
-              onError={e => { e.target.style.display = 'none'; }}
-            />
-          </div>
-          <p className="logo-subtitle">LAYANAN DIGITAL PREMIUM</p>
+      <div className="auth-v2-screen">
+        <div className="auth-orbs" aria-hidden="true">
+          <div className="auth-orb auth-orb-1" />
+          <div className="auth-orb auth-orb-2" />
+          <div className="auth-orb auth-orb-3" />
         </div>
-
-        <div className="welcome-card">
-          <button className="btn btn-primary" onClick={() => setStep('register')} style={{ height: 60, fontSize: '1.05rem', borderRadius: 'var(--r-full)' }}>
-            📝 Buat Akun Baru
-          </button>
-          <button className="btn btn-secondary" onClick={() => setStep('login')} style={{ height: 60, fontSize: '1.05rem', marginBottom: 0, borderRadius: 'var(--r-full)' }}>
-            🔑 Masuk ke Akun
-          </button>
+        <div className="welcome-v2">
+          <div className="welcome-v2-hero">
+            <div className="welcome-badge-v2">
+              <div className="dot" />
+              <span>Sistem Online</span>
+            </div>
+            <div className="welcome-v2-logo-wrap">
+              <img
+                src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
+                alt="WALZ SHOP"
+                className="welcome-v2-logo-img"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+              <div className="welcome-v2-ring" />
+              <div className="welcome-v2-ring-2" />
+            </div>
+            <h1 className="welcome-v2-title">WALZ<span>SHOP</span></h1>
+            <p className="welcome-v2-sub">Layanan Digital Premium</p>
+            <div className="welcome-stats-row">
+              <div className="stat-cell"><strong>1000+</strong><label>Layanan</label></div>
+              <div className="stat-divider" />
+              <div className="stat-cell"><strong>85+</strong><label>Negara</label></div>
+              <div className="stat-divider" />
+              <div className="stat-cell"><strong>24/7</strong><label>Support</label></div>
+            </div>
+          </div>
+          <div className="welcome-v2-actions">
+            <button className="btn-hero-primary" onClick={() => setStep('register')}>
+              <span>📝</span>
+              <span>Buat Akun Baru</span>
+            </button>
+            <button className="btn-hero-secondary" onClick={() => setStep('login')}>
+              <span>🔑</span>
+              <span>Masuk ke Akun</span>
+            </button>
+            <p className="welcome-footer-note">Aman &amp; Terpercaya · <span>✓ Terenkripsi</span></p>
+          </div>
         </div>
       </div>
     );
@@ -964,7 +985,12 @@ export default function Page() {
 
   if (step === 'login') {
     return (
-      <div className="auth-screen welcome-bg">
+      <div className="auth-v2-screen">
+        <div className="auth-orbs" aria-hidden="true">
+          <div className="auth-orb auth-orb-1" />
+          <div className="auth-orb auth-orb-2" />
+          <div className="auth-orb auth-orb-3" />
+        </div>
         <div className="toast-container">
           {toast && (
             <div className="toast">
@@ -981,52 +1007,52 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-circle-wrapper">
-          <div className="header-logo-circle">
-            <img
-              src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
-              alt="WALZ SHOP"
-              className="header-logo-img-circle"
-              onError={e => { e.target.style.display = 'none'; }}
-            />
-            <div className="header-logo-ring" />
-          </div>
-          <div className="auth-logo-text">WALZ <span>SHOP</span></div>
-        </div>
-        <div className="auth-card">
-          <div className="auth-card-title">Login Kembali 👋</div>
-          <div className="auth-card-sub">Masukkan email dan password akun kamu</div>
-          <div className="input-field">
-            <label>Alamat Email</label>
-            <input type="email" value={email} placeholder="nama@email.com" onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div className="input-field">
-            <label>Password</label>
-            <div className="input-icon-wrap">
-              <input
-                type={showPw ? 'text' : 'password'}
-                value={pwInput}
-                placeholder="••••••••"
-                onChange={e => setPwInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !busy && email && pwInput && loginWithPassword()}
+        <div className="auth-card-v2">
+          <div className="auth-card-top">
+            <div className="auth-logo-ring-wrap">
+              <img
+                src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
+                alt="WALZ SHOP"
+                onError={e => { e.target.style.display = 'none'; }}
               />
-              <EyeToggle show={showPw} onToggle={() => setShowPw(v => !v)} />
+              <div className="auth-ring" />
+            </div>
+            <div className="auth-title-v2">WALZ <span style={{ color: 'var(--cyan)', WebkitTextFillColor: 'var(--cyan)' }}>SHOP</span></div>
+          </div>
+          <div className="auth-card-body-v2">
+            <div className="auth-card-headline">Masuk ke Akun 👋</div>
+            <div className="auth-card-desc">Masukkan email dan password akun kamu</div>
+            <div className="input-field">
+              <label>Alamat Email</label>
+              <input type="email" value={email} placeholder="nama@email.com" onChange={e => setEmail(e.target.value)} />
+            </div>
+            <div className="input-field">
+              <label>Password</label>
+              <div className="input-icon-wrap">
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  value={pwInput}
+                  placeholder="••••••••"
+                  onChange={e => setPwInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !busy && email && pwInput && loginWithPassword()}
+                />
+                <EyeToggle show={showPw} onToggle={() => setShowPw(v => !v)} />
+              </div>
+            </div>
+            <button
+              className="btn btn-primary"
+              onClick={loginWithPassword}
+              disabled={!email || !pwInput || busy}
+              style={{ height: 52, borderRadius: 'var(--r-full)', marginTop: 6 }}
+            >
+              {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Memproses...</> : '🔑 Masuk Sekarang'}
+            </button>
+            <div className="auth-card-links">
+              <button className="auth-link-btn" onClick={() => setStep('forgot')}>Lupa Password?</button>
+              <span className="auth-link-sep">·</span>
+              <button className="auth-link-btn" onClick={() => { setStep('welcome'); setEmail(''); setPwInput(''); }}>← Kembali</button>
             </div>
           </div>
-          <button
-            className="btn btn-primary"
-            onClick={loginWithPassword}
-            disabled={!email || !pwInput || busy}
-            style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}
-          >
-            {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Memproses...</> : '🔑 Masuk Sekarang'}
-          </button>
-          <button className="btn-ghost" onClick={() => setStep('forgot')} style={{ color: 'var(--blue2)', marginBottom: 8 }}>
-            Lupa Password?
-          </button>
-          <button className="btn-ghost" onClick={() => { setStep('welcome'); setEmail(''); setPwInput(''); }}>
-            ← Kembali
-          </button>
         </div>
       </div>
     );
@@ -1034,7 +1060,12 @@ export default function Page() {
 
   if (step === 'register') {
     return (
-      <div className="auth-screen welcome-bg">
+      <div className="auth-v2-screen">
+        <div className="auth-orbs" aria-hidden="true">
+          <div className="auth-orb auth-orb-1" />
+          <div className="auth-orb auth-orb-2" />
+          <div className="auth-orb auth-orb-3" />
+        </div>
         <div className="toast-container">
           {toast && (
             <div className="toast">
@@ -1051,33 +1082,34 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-circle-wrapper">
-          <div className="header-logo-circle">
-            <img
-              src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
-              alt="WALZ SHOP"
-              className="header-logo-img-circle"
-              onError={e => { e.target.style.display = 'none'; }}
-            />
-            <div className="header-logo-ring" />
+        <div className="auth-card-v2">
+          <div className="auth-card-top">
+            <div className="auth-logo-ring-wrap">
+              <img
+                src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
+                alt="WALZ SHOP"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+              <div className="auth-ring" />
+            </div>
+            <div className="auth-title-v2">WALZ <span style={{ color: 'var(--cyan)', WebkitTextFillColor: 'var(--cyan)' }}>SHOP</span></div>
           </div>
-          <div className="auth-logo-text">WALZ <span>SHOP</span></div>
-        </div>
-        <div className="auth-card">
-          <div className="auth-card-title">Daftar Akun Baru 🚀</div>
-          <div className="auth-card-sub">Masukkan email aktif untuk menerima kode verifikasi</div>
-          <div className="input-field">
-            <label>Alamat Email</label>
-            <input type="email" value={email} placeholder="nama@email.com"
-              onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !busy && email && sendOtp(email, 'register')} />
+          <div className="auth-card-body-v2">
+            <div className="auth-card-headline">Daftar Akun Baru 🚀</div>
+            <div className="auth-card-desc">Masukkan email aktif untuk menerima kode verifikasi OTP</div>
+            <div className="input-field">
+              <label>Alamat Email</label>
+              <input type="email" value={email} placeholder="nama@email.com"
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !busy && email && sendOtp(email, 'register')} />
+            </div>
+            <button className="btn btn-primary" onClick={() => sendOtp(email, 'register')} disabled={!email || busy} style={{ height: 52, borderRadius: 'var(--r-full)', marginTop: 6 }}>
+              {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Mengirim...</> : '✉️ Kirim Kode OTP'}
+            </button>
+            <div className="auth-card-links">
+              <button className="auth-link-btn" onClick={() => { setStep('welcome'); setEmail(''); }}>← Batal</button>
+            </div>
           </div>
-          <button className="btn btn-primary" onClick={() => sendOtp(email, 'register')} disabled={!email || busy} style={{ height: 54, borderRadius: 'var(--r-full)', marginTop: 8 }}>
-            {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Mengirim...</> : '✉️ Kirim Kode OTP'}
-          </button>
-          <button className="btn-ghost" onClick={() => { setStep('welcome'); setEmail(''); }}>
-            ← Batal
-          </button>
         </div>
       </div>
     );
@@ -1087,7 +1119,12 @@ export default function Page() {
     const isReset = step === 'forgot_otp';
     const timerClass = countdown > 60 ? '' : countdown > 0 ? 'warning' : 'expired';
     return (
-      <div className="auth-screen welcome-bg">
+      <div className="auth-v2-screen">
+        <div className="auth-orbs" aria-hidden="true">
+          <div className="auth-orb auth-orb-1" />
+          <div className="auth-orb auth-orb-2" />
+          <div className="auth-orb auth-orb-3" />
+        </div>
         <div className="toast-container">
           {toast && (
             <div className="toast">
@@ -1104,42 +1141,43 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-circle-wrapper">
-          <div className="header-logo-circle">
-            <img
-              src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
-              alt="WALZ SHOP"
-              className="header-logo-img-circle"
-              onError={e => { e.target.style.display = 'none'; }}
-            />
-            <div className="header-logo-ring" />
+        <div className="auth-card-v2">
+          <div className="auth-card-top">
+            <div className="auth-logo-ring-wrap">
+              <img
+                src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
+                alt="WALZ SHOP"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+              <div className="auth-ring" />
+            </div>
+            <div className="auth-title-v2">WALZ <span style={{ color: 'var(--cyan)', WebkitTextFillColor: 'var(--cyan)' }}>SHOP</span></div>
           </div>
-          <div className="auth-logo-text">WALZ <span>SHOP</span></div>
-        </div>
-        <div className="auth-card">
-          <div className="auth-card-title">Verifikasi OTP 📬</div>
-          <div className="otp-info">Kode dikirim ke <strong>{email}</strong></div>
-          <div className={`timer-bar ${timerClass}`}>
-            <span className="timer-label">{countdown > 0 ? 'Kode berlaku' : 'Kode expired'}</span>
-            <span className={`timer-time ${timerClass}`}>{countdown > 0 ? formatTime(countdown) : '00:00'}</span>
+          <div className="auth-card-body-v2">
+            <div className="auth-card-headline">Verifikasi OTP 📬</div>
+            <div className="otp-info">Kode dikirim ke <strong>{email}</strong></div>
+            <div className={`timer-bar ${timerClass}`}>
+              <span className="timer-label">{countdown > 0 ? 'Kode berlaku' : 'Kode expired'}</span>
+              <span className={`timer-time ${timerClass}`}>{countdown > 0 ? formatTime(countdown) : '00:00'}</span>
+            </div>
+            <div className="input-field">
+              <label>Kode OTP (6 digit)</label>
+              <input type="text" inputMode="numeric" maxLength={6} value={otpCode} placeholder="••••••"
+                style={{ fontSize: '1.5rem', letterSpacing: '0.3em', textAlign: 'center' }}
+                onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={e => e.key === 'Enter' && otpCode.length === 6 && !busy && verifyOtp()}
+                disabled={countdown === 0} />
+            </div>
+            <button className="btn btn-primary" onClick={verifyOtp} disabled={otpCode.length !== 6 || busy || countdown === 0} style={{ borderRadius: 'var(--r-full)' }}>
+              {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Verifikasi...</> : '✅ Verifikasi OTP'}
+            </button>
+            <button className="btn btn-secondary" onClick={() => sendOtp(email, isReset ? 'reset' : 'register')} disabled={busy || countdown > 0} style={{ borderRadius: 'var(--r-full)' }}>
+              {countdown > 0 ? `Kirim Ulang (${formatTime(countdown)})` : '🔄 Kirim Ulang OTP'}
+            </button>
+            <div className="auth-card-links">
+              <button className="auth-link-btn" onClick={() => { setStep(isReset ? 'forgot' : 'register'); setOtpCode(''); }}>← Ganti Email</button>
+            </div>
           </div>
-          <div className="input-field">
-            <label>Kode OTP (6 digit)</label>
-            <input type="text" inputMode="numeric" maxLength={6} value={otpCode} placeholder="••••••"
-              style={{ fontSize: '1.5rem', letterSpacing: '0.3em', textAlign: 'center' }}
-              onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
-              onKeyDown={e => e.key === 'Enter' && otpCode.length === 6 && !busy && verifyOtp()}
-              disabled={countdown === 0} />
-          </div>
-          <button className="btn btn-primary" onClick={verifyOtp} disabled={otpCode.length !== 6 || busy || countdown === 0} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Verifikasi...</> : '✅ Verifikasi OTP'}
-          </button>
-          <button className="btn btn-secondary" onClick={() => sendOtp(email, isReset ? 'reset' : 'register')} disabled={busy || countdown > 0} style={{ borderRadius: 'var(--r-full)' }}>
-            {countdown > 0 ? `Kirim Ulang (${formatTime(countdown)})` : '🔄 Kirim Ulang OTP'}
-          </button>
-          <button className="btn-ghost" onClick={() => { setStep(isReset ? 'forgot' : 'register'); setOtpCode(''); }}>
-            ← Ganti Email
-          </button>
         </div>
       </div>
     );
@@ -1149,7 +1187,12 @@ export default function Page() {
     const isMatch = newPass === confirmPass;
     const isValid = setupUser.length > 2 && newPass.length >= 6 && isMatch;
     return (
-      <div className="auth-screen welcome-bg">
+      <div className="auth-v2-screen">
+        <div className="auth-orbs" aria-hidden="true">
+          <div className="auth-orb auth-orb-1" />
+          <div className="auth-orb auth-orb-2" />
+          <div className="auth-orb auth-orb-3" />
+        </div>
         <div className="toast-container">
           {toast && (
             <div className="toast">
@@ -1166,44 +1209,45 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-circle-wrapper">
-          <div className="header-logo-circle">
-            <img
-              src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
-              alt="WALZ SHOP"
-              className="header-logo-img-circle"
-              onError={e => { e.target.style.display = 'none'; }}
-            />
-            <div className="header-logo-ring" />
-          </div>
-          <div className="auth-logo-text">WALZ <span>SHOP</span></div>
-        </div>
-        <div className="auth-card">
-          <div className="auth-card-title">Lengkapi Profil ✍️</div>
-          <div className="auth-card-sub">Buat username unik dan password agar kedepannya bisa langsung login tanpa OTP.</div>
-          <div className="input-field">
-            <label>Username</label>
-            <input type="text" value={setupUser} placeholder="Nama unik tanpa spasi" onChange={e => setSetupUser(e.target.value.replace(/\s/g, ''))} />
-          </div>
-          <div className="input-field">
-            <label>Password Baru</label>
-            <div className="input-icon-wrap">
-              <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => setNewPass(e.target.value)} />
-              <EyeToggle show={showNewPw} onToggle={() => setShowNewPw(v => !v)} />
+        <div className="auth-card-v2">
+          <div className="auth-card-top">
+            <div className="auth-logo-ring-wrap">
+              <img
+                src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
+                alt="WALZ SHOP"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+              <div className="auth-ring" />
             </div>
+            <div className="auth-title-v2">WALZ <span style={{ color: 'var(--cyan)', WebkitTextFillColor: 'var(--cyan)' }}>SHOP</span></div>
           </div>
-          <div className="input-field">
-            <label>Konfirmasi Password</label>
-            <div className="input-icon-wrap">
-              <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => setConfirmPass(e.target.value)} />
-              <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
+          <div className="auth-card-body-v2">
+            <div className="auth-card-headline">Lengkapi Profil ✍️</div>
+            <div className="auth-card-desc">Buat username unik dan password agar kedepannya bisa langsung login tanpa OTP.</div>
+            <div className="input-field">
+              <label>Username</label>
+              <input type="text" value={setupUser} placeholder="Nama unik tanpa spasi" onChange={e => setSetupUser(e.target.value.replace(/\s/g, ''))} />
             </div>
+            <div className="input-field">
+              <label>Password Baru</label>
+              <div className="input-icon-wrap">
+                <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => setNewPass(e.target.value)} />
+                <EyeToggle show={showNewPw} onToggle={() => setShowNewPw(v => !v)} />
+              </div>
+            </div>
+            <div className="input-field">
+              <label>Konfirmasi Password</label>
+              <div className="input-icon-wrap">
+                <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => setConfirmPass(e.target.value)} />
+                <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
+              </div>
+            </div>
+            {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
+            {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
+            <button className="btn btn-primary" onClick={completeSetup} disabled={!isValid || busy} style={{ height: 52, borderRadius: 'var(--r-full)' }}>
+              {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Menyimpan...</> : '🚀 Mulai Gunakan Aplikasi'}
+            </button>
           </div>
-          {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
-          {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
-          <button className="btn btn-primary" onClick={completeSetup} disabled={!isValid || busy} style={{ height: 54, borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Menyimpan...</> : '🚀 Mulai Gunakan Aplikasi'}
-          </button>
         </div>
       </div>
     );
@@ -1211,7 +1255,12 @@ export default function Page() {
 
   if (step === 'forgot') {
     return (
-      <div className="auth-screen welcome-bg">
+      <div className="auth-v2-screen">
+        <div className="auth-orbs" aria-hidden="true">
+          <div className="auth-orb auth-orb-1" />
+          <div className="auth-orb auth-orb-2" />
+          <div className="auth-orb auth-orb-3" />
+        </div>
         <div className="toast-container">
           {toast && (
             <div className="toast">
@@ -1228,31 +1277,32 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-circle-wrapper">
-          <div className="header-logo-circle">
-            <img
-              src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
-              alt="WALZ SHOP"
-              className="header-logo-img-circle"
-              onError={e => { e.target.style.display = 'none'; }}
-            />
-            <div className="header-logo-ring" />
+        <div className="auth-card-v2">
+          <div className="auth-card-top">
+            <div className="auth-logo-ring-wrap">
+              <img
+                src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
+                alt="WALZ SHOP"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+              <div className="auth-ring" />
+            </div>
+            <div className="auth-title-v2">WALZ <span style={{ color: 'var(--cyan)', WebkitTextFillColor: 'var(--cyan)' }}>SHOP</span></div>
           </div>
-          <div className="auth-logo-text">WALZ <span>SHOP</span></div>
-        </div>
-        <div className="auth-card">
-          <div className="auth-card-title">Lupa Password 🔒</div>
-          <div className="auth-card-sub">Masukkan email akun kamu yang pernah terdaftar untuk reset password.</div>
-          <div className="input-field">
-            <label>Email Terdaftar</label>
-            <input type="email" value={email} placeholder="nama@email.com" onChange={e => setEmail(e.target.value)} />
+          <div className="auth-card-body-v2">
+            <div className="auth-card-headline">Lupa Password 🔒</div>
+            <div className="auth-card-desc">Masukkan email akun kamu yang pernah terdaftar untuk reset password.</div>
+            <div className="input-field">
+              <label>Email Terdaftar</label>
+              <input type="email" value={email} placeholder="nama@email.com" onChange={e => setEmail(e.target.value)} />
+            </div>
+            <button className="btn btn-primary" onClick={handleForgotCheck} disabled={!email || busy} style={{ borderRadius: 'var(--r-full)' }}>
+              {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Memeriksa...</> : '📩 Lanjutkan'}
+            </button>
+            <div className="auth-card-links">
+              <button className="auth-link-btn" onClick={() => setStep('login')}>← Batal</button>
+            </div>
           </div>
-          <button className="btn btn-primary" onClick={handleForgotCheck} disabled={!email || busy} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Memeriksa...</> : '📩 Lanjutkan'}
-          </button>
-          <button className="btn-ghost" onClick={() => setStep('login')}>
-            ← Batal
-          </button>
         </div>
       </div>
     );
@@ -1262,7 +1312,12 @@ export default function Page() {
     const isMatch = newPass === confirmPass;
     const isValid = newPass.length >= 6 && isMatch;
     return (
-      <div className="auth-screen welcome-bg">
+      <div className="auth-v2-screen">
+        <div className="auth-orbs" aria-hidden="true">
+          <div className="auth-orb auth-orb-1" />
+          <div className="auth-orb auth-orb-2" />
+          <div className="auth-orb auth-orb-3" />
+        </div>
         <div className="toast-container">
           {toast && (
             <div className="toast">
@@ -1279,40 +1334,41 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="auth-logo-circle-wrapper">
-          <div className="header-logo-circle">
-            <img
-              src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
-              alt="WALZ SHOP"
-              className="header-logo-img-circle"
-              onError={e => { e.target.style.display = 'none'; }}
-            />
-            <div className="header-logo-ring" />
-          </div>
-          <div className="auth-logo-text">WALZ <span>SHOP</span></div>
-        </div>
-        <div className="auth-card">
-          <div className="auth-card-title">Password Baru 🔐</div>
-          <div className="auth-card-sub">Buat password baru untuk akun kamu</div>
-          <div className="input-field">
-            <label>Password Baru</label>
-            <div className="input-icon-wrap">
-              <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => setNewPass(e.target.value)} />
-              <EyeToggle show={showNewPw} onToggle={() => setShowNewPw(v => !v)} />
+        <div className="auth-card-v2">
+          <div className="auth-card-top">
+            <div className="auth-logo-ring-wrap">
+              <img
+                src="https://i.postimg.cc/Z5FsJPm8/file-00000000282871f78dd0749d93f64068.png"
+                alt="WALZ SHOP"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+              <div className="auth-ring" />
             </div>
+            <div className="auth-title-v2">WALZ <span style={{ color: 'var(--cyan)', WebkitTextFillColor: 'var(--cyan)' }}>SHOP</span></div>
           </div>
-          <div className="input-field">
-            <label>Konfirmasi Password</label>
-            <div className="input-icon-wrap">
-              <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => setConfirmPass(e.target.value)} />
-              <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
+          <div className="auth-card-body-v2">
+            <div className="auth-card-headline">Password Baru 🔐</div>
+            <div className="auth-card-desc">Buat password baru untuk akun kamu</div>
+            <div className="input-field">
+              <label>Password Baru</label>
+              <div className="input-icon-wrap">
+                <input type={showNewPw ? 'text' : 'password'} value={newPass} placeholder="Min. 6 karakter" onChange={e => setNewPass(e.target.value)} />
+                <EyeToggle show={showNewPw} onToggle={() => setShowNewPw(v => !v)} />
+              </div>
             </div>
+            <div className="input-field">
+              <label>Konfirmasi Password</label>
+              <div className="input-icon-wrap">
+                <input type={showConfPw ? 'text' : 'password'} value={confirmPass} placeholder="Ulangi password" onChange={e => setConfirmPass(e.target.value)} />
+                <EyeToggle show={showConfPw} onToggle={() => setShowConfPw(v => !v)} />
+              </div>
+            </div>
+            {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
+            {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
+            <button className="btn btn-primary" onClick={resetPassword} disabled={!isValid || busy} style={{ borderRadius: 'var(--r-full)' }}>
+              {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Menyimpan...</> : '💾 Simpan Password'}
+            </button>
           </div>
-          {confirmPass && !isMatch && <p style={{ fontSize: '0.78rem', color: 'var(--red)', marginBottom: 12 }}>❌ Password tidak cocok</p>}
-          {confirmPass && isMatch && newPass.length >= 6 && <p style={{ fontSize: '0.78rem', color: 'var(--green)', marginBottom: 12 }}>✅ Password cocok</p>}
-          <button className="btn btn-primary" onClick={resetPassword} disabled={!isValid || busy} style={{ borderRadius: 'var(--r-full)' }}>
-            {busy ? <><LoadingSpinner style={{ width: 18, height: 18 }} /> Menyimpan...</> : '💾 Simpan Password'}
-          </button>
         </div>
       </div>
     );
@@ -1992,150 +2048,4 @@ export default function Page() {
             )}
 
             <div className="receipt-row" style={{ color: 'var(--blue2)', fontWeight: 800 }}>
-              <div className="receipt-row-label" style={{ color: 'var(--blue2)' }}>Total Pembayaran</div>
-              <div className="receipt-row-value">{(selectedHistoryItem.total || selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
-            </div>
-
-            <div className="receipt-footer-text">
-              Gateway pembayaran oleh <strong>RumahOTP</strong>
-            </div>
-
-            {selectedHistoryItem.itemType === 'order' && selectedHistoryItem.status === 'waiting' && (
-              <div className="receipt-actions">
-                <button className="btn btn-secondary" disabled={busy} onClick={() => {
-                  showModal('warning', 'Batalkan Pesanan?', 'Saldo akan dikembalikan ke akun kamu secara otomatis.',
-                    () => cancelHistoryOrder(selectedHistoryItem.id, Number(selectedHistoryItem.price)));
-                }}>Batalkan</button>
-                <button className="btn btn-primary" style={{ marginBottom: 0 }} disabled={busy} onClick={() => setSelectedHistoryItem(null)}>Tutup</button>
-              </div>
-            )}
-
-            {selectedHistoryItem.itemType === 'deposit' && selectedHistoryItem.status === 'pending' && (
-              <div className="receipt-actions" style={{ marginTop: 12 }}>
-                <button className="btn btn-secondary" disabled={busy} onClick={() => checkHistoryDeposit(selectedHistoryItem.id)}>
-                  {busy ? 'Mengecek...' : 'Cek Pembayaran'}
-                </button>
-                <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => setSelectedHistoryItem(null)}>Tutup</button>
-              </div>
-            )}
-
-            {selectedHistoryItem.status !== 'pending' && selectedHistoryItem.status !== 'waiting' && (
-              <div className="receipt-actions">
-                <button className="btn btn-secondary" onClick={() => window.open('https://rumahotp.io', '_blank')}>Support</button>
-                <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => setSelectedHistoryItem(null)}>Selesai</button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className={`sheet-overlay ${showSheet ? 'open' : ''}`} onClick={() => setShowSheet(false)} />
-      <div className={`bottom-sheet ${showSheet ? 'open' : ''}`}>
-        <div className="sheet-handle" />
-        <div className="sheet-header">
-          <div className="sheet-svc-row">
-            <div className="sheet-svc-icon">
-              {selectedSvc?.service_img && <img src={selectedSvc.service_img} alt="" />}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="sheet-svc-name">{selectedSvc?.service_name}</div>
-              <div className="sheet-title">Pilih Server Negara</div>
-            </div>
-          </div>
-          <div className="sheet-search">
-            <input type="text" placeholder="Cari negara (Contoh: Indonesia)" value={countryQuery} onChange={(e) => setCountryQuery(e.target.value)} />
-          </div>
-        </div>
-        <div className="sheet-body">
-          {filteredCountries.length === 0 && !loadingCountries ? (
-            <div className="empty-state" style={{ padding: '32px 0' }}>
-              <span className="icon">🌐</span>
-              <p>Tidak ada stok untuk pencarian tersebut</p>
-            </div>
-          ) : (
-            filteredCountries.map(c => {
-              const totalStock = c.available.length;
-              const isExpanded = expandedCountry === c.number_id;
-
-              return (
-                <div key={c.number_id || c.name} className="country-wrapper">
-                  <div className={`country-item ${isExpanded ? 'selected' : ''}`} onClick={() => setExpandedCountry(isExpanded ? null : c.number_id)}>
-                    <span className="country-flag">{getFlag(c.name)}</span>
-                    <span className="country-name">{c.name}</span>
-                    <div className="country-right">
-                      <div className="country-price">Mulai {fmt(c.available[0]?.price)}</div>
-                      <div className={`country-stock ${totalStock > 3 ? 'text-green' : totalStock > 0 ? 'text-amber' : 'text-red'}`}>
-                        {totalStock > 0 ? `${totalStock} server` : 'Habis'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="provider-list">
-                      {c.available.map(prov => (
-                        <div key={prov.provider_id} className="provider-item">
-                          <div className="provider-info">
-                            <span className="provider-id">ID: {prov.provider_id}</span>
-                            <span className="provider-price">{fmt(prov.price)}</span>
-                          </div>
-                          <button className="btn-order" disabled={loadingOperators} onClick={() => handleOrderClick(c, prov)}>
-                            {loadingOperators && selectedOrderContext?.provider?.provider_id === prov.provider_id ? <LoadingSpinner style={{ width: 14, height: 14, borderWidth: 2 }} /> : 'Pilih'}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {modal.show && (
-        <div className="modal-overlay open" onClick={closeModal}>
-          <div className="modal-content popIn" onClick={e => e.stopPropagation()} style={{ padding: '28px 24px' }}>
-            <div className={`modal-svg-wrap ${modal.type}`}>
-              {modal.type === 'warning' && <IconWarning />}
-              {modal.type === 'error' && <IconCross />}
-              {modal.type === 'success' && <IconCheck />}
-              {modal.type === 'info' && <span style={{ fontSize: '1.4rem' }}>ℹ️</span>}
-            </div>
-            <h3 style={{ textAlign: 'center', marginBottom: 8 }}>{modal.title}</h3>
-            <p style={{ textAlign: 'center' }}>{modal.msg}</p>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={closeModal}>Batal</button>
-              {modal.onConfirm && (
-                <button className="btn btn-primary" style={{ marginBottom: 0 }} onClick={() => { modal.onConfirm(); closeModal(); }}>Lanjutkan</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className={`modal-overlay ${showOperatorModal ? 'open' : ''}`} onClick={() => setShowOperatorModal(false)}>
-        <div className={`modal-content ${showOperatorModal ? 'popIn' : ''}`} onClick={e => e.stopPropagation()} style={{ padding: '24px' }}>
-          <h3 style={{ marginBottom: '16px', fontSize: '1.15rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>Pilih Operator</h3>
-          {loadingOperators ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
-              <LoadingSpinner />
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>Memuat daftar operator...</span>
-            </div>
-          ) : (
-            <div className="operator-grid">
-              {operators.map(op => (
-                <button key={op.id || op.name} className="operator-card" onClick={() => confirmOrder(op)}>
-                  <OperatorIcon name={op.name} />
-                  <span>{op.name === 'any' ? 'Any / Semua' : op.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          <button className="btn btn-secondary" style={{ marginTop: 16, width: '100%', height: 44, borderRadius: 'var(--r-full)' }} onClick={() => setShowOperatorModal(false)}>
-            Batal
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
+              <div className="receipt-row-label" style={{ color: 'var(--b
