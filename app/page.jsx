@@ -262,6 +262,9 @@ export default function Page() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfPw, setShowConfPw] = useState(false);
 
+  // Track providers that failed due to stock empty (per service session)
+  const [failedProviders, setFailedProviders] = useState({});
+
   const [ppobItems, setPpobItems] = useState([]);
   const [ppobError, setPpobError] = useState('');
   const [ppobQuery, setPpobQuery] = useState('');
@@ -535,7 +538,7 @@ export default function Page() {
             showToast('warning', 'Dibatalkan', 'Pesanan telah dibatalkan.');
           }
         } catch (error) { }
-      }, 2000);
+      }, 5000);
     }
     return () => clearInterval(interval);
   }, [order]);
@@ -724,6 +727,7 @@ export default function Page() {
     setSelectedSvc(svc);
     setShowSheet(true);
     setLoadingCountries(true);
+    setFailedProviders({});
     const r = await api('countries', { service_id: svc.service_code });
     setLoadingCountries(false);
     if (r.success && Array.isArray(r.data)) {
@@ -731,6 +735,11 @@ export default function Page() {
         .map(c => ({
           ...c,
           available: (c.pricelist?.filter(p => p.available) || []).sort((a, b) => a.price - b.price),
+          allProviders: (c.pricelist || []).sort((a, b) => {
+            if (a.available && !b.available) return -1;
+            if (!a.available && b.available) return 1;
+            return a.price - b.price;
+          }),
         }))
         .filter(c => c.available.length > 0)
         .sort((a, b) => {
@@ -800,7 +809,12 @@ export default function Page() {
           const kekurangan = required ? Math.max(0, required - balance) : null;
           setInsufficientModal({ balance, required, kekurangan });
         } else {
-          showToast('error', 'Pesanan Gagal', r.msg || 'Stock penyedia habis, tunggu beberapa saat.');
+          // Mark this provider as stock-empty so UI updates immediately
+          const provId = selectedOrderContext?.provider?.provider_id;
+          if (provId) {
+            setFailedProviders(prev => ({ ...prev, [provId]: true }));
+          }
+          showToast('error', 'Pesanan Gagal', r.msg || 'Stock penyedia habis, coba server lain.');
         }
       }
     } catch (e) {
@@ -2189,35 +2203,49 @@ export default function Page() {
                 </div>
                 {expandedCountry === country.number_id && (
                   <div className="provider-list">
-                    {country.available.map(provider => (
-                      <div key={provider.provider_id} className="provider-item">
-                        <div className="provider-info">
-                          <span style={{ fontSize: '1.1rem' }}>📡</span>
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <div className="provider-id">Server {provider.provider_id}</div>
-                              <span style={{
-                                fontSize: '0.58rem', fontWeight: 800, padding: '2px 6px',
-                                borderRadius: 99,
-                                background: 'rgba(0,232,122,0.15)',
-                                color: 'var(--green)',
-                                border: '1px solid rgba(0,232,122,0.35)',
-                              }}>● READY</span>
+                    {(country.allProviders || country.available).map(provider => {
+                      const isFailed = !!failedProviders[provider.provider_id];
+                      const isReady = provider.available && !isFailed;
+                      const isHabis = !provider.available || isFailed;
+                      return (
+                        <div key={provider.provider_id} className="provider-item" style={{
+                          opacity: isHabis ? 0.55 : 1,
+                          background: isHabis ? 'rgba(255,64,96,0.04)' : undefined,
+                          border: isHabis ? '1px solid rgba(255,64,96,0.15)' : '1px solid var(--border)',
+                        }}>
+                          <div className="provider-info">
+                            <span style={{ fontSize: '1.1rem' }}>{isHabis ? '🚫' : '📡'}</span>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div className="provider-id">Server {provider.provider_id}</div>
+                                <span style={{
+                                  fontSize: '0.58rem', fontWeight: 800, padding: '2px 6px',
+                                  borderRadius: 99,
+                                  background: isReady ? 'rgba(0,232,122,0.15)' : 'rgba(255,64,96,0.12)',
+                                  color: isReady ? 'var(--green)' : 'var(--red)',
+                                  border: `1px solid ${isReady ? 'rgba(0,232,122,0.35)' : 'rgba(255,64,96,0.3)'}`,
+                                }}>
+                                  {isReady ? '● READY' : '● HABIS'}
+                                </span>
+                              </div>
+                              <div className="provider-price" style={{ color: isHabis ? 'var(--text-3)' : undefined }}>
+                                {fmt(provider.price)}
+                              </div>
                             </div>
-                            <div className="provider-price">{fmt(provider.price)}</div>
                           </div>
+                          <button
+                            className="btn-order"
+                            disabled={!!orderingProv || isHabis}
+                            onClick={() => isReady && handleOrderClick(country, provider)}
+                            style={isHabis ? { borderColor: 'rgba(255,64,96,0.4)', color: 'var(--red)', cursor: 'not-allowed' } : {}}
+                          >
+                            {orderingProv === provider.provider_id
+                              ? <LoadingSpinner style={{ width: 14, height: 14 }} />
+                              : isHabis ? 'Habis' : 'Beli'}
+                          </button>
                         </div>
-                        <button
-                          className="btn-order"
-                          disabled={!!orderingProv}
-                          onClick={() => handleOrderClick(country, provider)}
-                        >
-                          {orderingProv === provider.provider_id
-                            ? <LoadingSpinner style={{ width: 14, height: 14 }} />
-                            : 'Beli'}
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
