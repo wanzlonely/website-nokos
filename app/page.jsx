@@ -238,9 +238,30 @@ export default function Page() {
   const [operators, setOperators] = useState([]);
   const [selectedOrderContext, setSelectedOrderContext] = useState(null);
 
-  const [order, setOrder] = useState(null);
-  const [orderExpiry, setOrderExpiry] = useState(0);
-  const [cancelCooldown, setCancelCooldown] = useState(0);
+  const [order, setOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('walz_active_order');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const [orderExpiry, setOrderExpiry] = useState(() => {
+    try {
+      const saved = localStorage.getItem('walz_order_expiry');
+      if (!saved) return 0;
+      const { expiry, savedAt } = JSON.parse(saved);
+      const elapsed = Math.floor((Date.now() - savedAt) / 1000);
+      return Math.max(0, expiry - elapsed);
+    } catch { return 0; }
+  });
+  const [cancelCooldown, setCancelCooldown] = useState(() => {
+    try {
+      const saved = localStorage.getItem('walz_cancel_cooldown');
+      if (!saved) return 0;
+      const { cooldown, savedAt } = JSON.parse(saved);
+      const elapsed = Math.floor((Date.now() - savedAt) / 1000);
+      return Math.max(0, cooldown - elapsed);
+    } catch { return 0; }
+  });
   const [cancelingOrder, setCancelingOrder] = useState(false);
 
   const [depositAmount, setDepositAmount] = useState('');
@@ -318,6 +339,29 @@ export default function Page() {
     localStorage.setItem('walz_theme', n);
     document.documentElement.setAttribute('data-theme', n);
   };
+
+  // Simpan order aktif ke localStorage agar tidak hilang saat refresh
+  useEffect(() => {
+    if (order) {
+      localStorage.setItem('walz_active_order', JSON.stringify(order));
+    } else {
+      localStorage.removeItem('walz_active_order');
+      localStorage.removeItem('walz_order_expiry');
+      localStorage.removeItem('walz_cancel_cooldown');
+    }
+  }, [order]);
+
+  useEffect(() => {
+    if (orderExpiry > 0) {
+      localStorage.setItem('walz_order_expiry', JSON.stringify({ expiry: orderExpiry, savedAt: Date.now() }));
+    }
+  }, [orderExpiry]);
+
+  useEffect(() => {
+    if (cancelCooldown > 0) {
+      localStorage.setItem('walz_cancel_cooldown', JSON.stringify({ cooldown: cancelCooldown, savedAt: Date.now() }));
+    }
+  }, [cancelCooldown]);
 
   useEffect(() => {
     api('balance').then(r => {
