@@ -522,11 +522,11 @@ export default function Page() {
 
   useEffect(() => {
     let interval;
-    if (order && !order.otp_code) {
+    if (order && (!order.otp_code || order.otp_code === '-' || order.otp_code.trim().length <= 1)) {
       interval = setInterval(async () => {
         try {
           const r = await api('order_status', { order_id: order.order_id });
-          if (r.success && r.data?.otp_code) {
+          if (r.success && r.data?.otp_code && r.data.otp_code !== '-' && r.data.otp_code.trim().length > 1) {
             setOrder(prev => ({ ...prev, otp_code: r.data.otp_code, otp_msg: r.data.otp_msg }));
             showToast('success', 'SMS Masuk!', 'Kode OTP berhasil diterima.');
             api('balance').then(res => res.success && setBalance(res.data.balance));
@@ -535,7 +535,7 @@ export default function Page() {
             showToast('warning', 'Dibatalkan', 'Pesanan telah dibatalkan.');
           }
         } catch (error) { }
-      }, 3000);
+      }, 2000);
     }
     return () => clearInterval(interval);
   }, [order]);
@@ -1702,7 +1702,7 @@ export default function Page() {
             </div>
 
             {/* ── OTP Status Card ── */}
-            {order.otp_code ? (
+            {order.otp_code && order.otp_code !== '-' && order.otp_code.trim().length > 1 ? (
               <div style={{
                 background: 'linear-gradient(135deg, rgba(0,232,122,0.1) 0%, rgba(0,232,122,0.05) 100%)',
                 border: '1px solid rgba(0,232,122,0.3)',
@@ -1777,7 +1777,7 @@ export default function Page() {
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ marginRight: 5 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 Beli Lagi
               </button>
-              {!order.otp_code && (
+              {(!order.otp_code || order.otp_code === '-' || order.otp_code.trim().length <= 1) && (
                 <button
                   className="btn"
                   style={{ flex: 1, borderRadius: 14, height: 48, background: cancelCooldown > 0 ? 'rgba(255,64,96,0.06)' : 'rgba(255,64,96,0.12)', border: '1.5px solid rgba(255,64,96,0.25)', color: 'var(--red)', fontWeight: 700, cursor: cancelCooldown > 0 ? 'not-allowed' : 'pointer', opacity: cancelCooldown > 0 ? 0.65 : 1 }}
