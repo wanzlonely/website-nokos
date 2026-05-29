@@ -2048,6 +2048,13 @@ export default function Page() {
             )}
 
             <div className="receipt-row" style={{ color: 'var(--blue2)', fontWeight: 800 }}>
-  <div className="receipt-row-label" style={{ color: 'var(--blue2)' }}>Total Dibayar</div>
-  <div className="receipt-row-value">... IDR</div>
-</div>
+              <div className="receipt-row-label" style={{ color: 'var(--blue2)' }}>Total Dibayar</div>
+              <div className="receipt-row-value">{(selectedHistoryItem.total || selectedHistoryItem.amount || selectedHistoryItem.price || 0).toLocaleString('id-ID')} IDR</div>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
