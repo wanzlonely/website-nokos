@@ -176,7 +176,7 @@ export async function POST(request) {
               headers: { 'x-apikey': keyAPI, accept: 'application/json' }
             });
             const resData = await r.json();
-            if (resData.success && resData.data?.otp_code) {
+            if (resData.success && resData.data?.otp_code && resData.data.otp_code !== '-' && resData.data.otp_code.trim().length > 1) {
               await redis.hset(k, { status: 'completed', otp_code: resData.data.otp_code, otp_msg: resData.data.otp_msg });
               item.status = 'completed';
               item.otp_code = resData.data.otp_code;
@@ -342,7 +342,7 @@ export async function POST(request) {
     const r = await fetch(url, { headers: { 'x-apikey': key, accept: 'application/json' } });
     const data = await r.json();
     if (data.success && data.data) {
-      if (data.data.otp_code) {
+      if (data.data.otp_code && data.data.otp_code !== '-' && data.data.otp_code.trim().length > 1) {
         await redis.hset(`order:${payload.order_id}`, { status: 'completed', otp_code: data.data.otp_code, otp_msg: data.data.otp_msg || '' });
       } else if (data.data.status === 'cancel') {
         await redis.hset(`order:${payload.order_id}`, { status: 'canceled' });
