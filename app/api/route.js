@@ -8,6 +8,16 @@ import {
   addBalance,
   getUserByEmail
 } from '@/lib/redis';
+import {
+  cekSaldo as digiflazzCekSaldo,
+  daftarHargaPrabayar,
+  daftarHargaPascabayar,
+  topupPrabayar,
+  cekTagihan,
+  bayarTagihan,
+  cekStatusTransaksi,
+  generateRefId,
+} from '@/lib/digiflazz';
 
 const BASE = 'https://www.rumahotp.io/api';
 
@@ -350,6 +360,315 @@ export async function POST(request) {
     }
     return NextResponse.json(data);
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DIGIFLAZZ – PPOB (Prabayar & Pascabayar)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Cek Saldo Digiflazz ───────────────────────────────────────────────────
+  if (endpoint === 'ppob_saldo') {
+    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+    try {
+      const result = await digiflazzCekSaldo();
+      return NextResponse.json({ success: true, data: result.data });
+    } catch (e) {
+      return NextResponse.json({ success: false, msg: 'Gagal cek saldo Digiflazz' });
+    }
+  }
+
+  // ── Daftar Harga Prabayar (pulsa, data, token listrik, game, dll) ─────────
+  if (endpoint === 'ppob_harga_prabayar') {
+    try {
+      const result = await daftarHargaPrabayar();
+      const products = (result.data || []).map(p => ({
+        ...p,
+        base_price: Number(p.price),
+        price: Number(p.price) + PROFIT,
+      }));
+      return NextResponse.json({ success: true, data: products });
+    } catch (e) {
+      return NextResponse.json({ success: false, msg: 'Gagal mengambil daftar harga prabayar' });
+    }
+  }
+
+  // ── Daftar Harga Pascabayar (PLN, PDAM, BPJS, dll) ───────────────────────
+  if (endpoint === 'ppob_harga_pascabayar') {
+    try {
+      const result = await daftarHargaPascabayar();
+      return NextResponse.json({ success: true, data: result.data || [] });
+    } catch (e) {
+      return NextResponse.json({ success: false, msg: 'Gagal mengambil daftar harga pascabayar' });
+    }
+  }
+
+  // ── Topup Prabayar ────────────────────────────────────────────────────────
+  if (endpoint === 'ppob_topup') {
+    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+
+    const { sku_code, customer_no, base_price = 0, product_name = 'Produk Prabayar' } = payload;
+    if (!sku_code || !customer_no) {
+      return NextResponse.json({ success: false, msg: 'sku_code dan customer_no wajib diisi' });
+    }
+
+    const sellPrice = Number(base_price) + PROFIT;
+    const refId = generateRefId('PRE');
+
+    // Potong saldo
+    try {
+      await deductBalance(user.id, sellPrice);
+    } catch (e) {
+      return NextResponse.json({
+        success: false,
+        msg: 'Saldo tidak cukup untuk melakukan pembelian ini.',
+        error_code: 'INSUFFICIENT_BALANCE',
+        required: sellPrice,
+      });
+    }
+
+    let result;
+    try {
+      result = await topupPrabayar({ skuCode: sku_code, customerNo: customer_no, refId });
+    } catch (e) {
+      await addBalance(user.id, sellPrice);
+      return NextResponse.json({ success: false, msg: 'Gagal terhubung ke provider' });
+    }
+
+    const tx = result?.data;
+
+    // Kembalikan saldo jika langsung Gagal
+    if (tx?.status === 'Gagal') {
+      await addBalance(user.id, sellPrice);
+    }
+
+    // Simpan ke history Redis
+    await redis.hset(`ppob:${refId}`, {
+      userId: user.id,
+      ref_id: refId,
+      sku_code,
+      customer_no,
+      product_name,
+      sell_price: sellPrice,
+      base_price: Number(base_price),
+      status: tx?.status || 'Pending',
+      rc: tx?.rc || '',
+      sn: tx?.sn || '',
+      message: tx?.message || '',
+      type: 'prabayar',
+      timestamp: Date.now(),
+    });
+    await redis.lpush(`history_ppob:${user.id}`, `ppob:${refId}`);
+
+    return NextResponse.json({
+      success: tx?.status === 'Sukses',
+      status: tx?.status || 'Pending',
+      ref_id: refId,
+      sn: tx?.sn || '',
+      message: tx?.message || '',
+      rc: tx?.rc || '',
+      price: tx?.price,
+      buyer_last_saldo: tx?.buyer_last_saldo,
+    });
+  }
+
+  // ── Cek Tagihan Pascabayar ────────────────────────────────────────────────
+  if (endpoint === 'ppob_cek_tagihan') {
+    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+
+    const { sku_code, customer_no } = payload;
+    if (!sku_code || !customer_no) {
+      return NextResponse.json({ success: false, msg: 'sku_code dan customer_no wajib diisi' });
+    }
+
+    const refId = generateRefId('INQ');
+    try {
+      const result = await cekTagihan({ skuCode: sku_code, customerNo: customer_no, refId });
+      const tx = result?.data;
+
+      // Simpan data inquiry sementara di Redis (dipakai saat bayar)
+      if (tx?.tr_id) {
+        await redis.hset(`ppob_inquiry:${tx.tr_id}`, {
+          userId: user.id,
+          ref_id: refId,
+          sku_code,
+          customer_no,
+          tr_id: String(tx.tr_id),
+          tr_name: tx.tr_name || '',
+          nominal: tx.nominal || 0,
+          admin: tx.admin || 0,
+          price: tx.price || 0,
+          selling_price: tx.selling_price || 0,
+          period: tx.period || '',
+          rc: tx.response_code || '',
+          timestamp: Date.now(),
+        });
+        // Expire otomatis 30 menit (data inquiry hanya berlaku sementara)
+        await redis.expire(`ppob_inquiry:${tx.tr_id}`, 1800);
+      }
+
+      return NextResponse.json({ success: true, data: tx });
+    } catch (e) {
+      return NextResponse.json({ success: false, msg: 'Gagal mengecek tagihan' });
+    }
+  }
+
+  // ── Bayar Tagihan Pascabayar ──────────────────────────────────────────────
+  if (endpoint === 'ppob_bayar_tagihan') {
+    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+
+    const { tr_id } = payload;
+    if (!tr_id) {
+      return NextResponse.json({ success: false, msg: 'tr_id wajib diisi' });
+    }
+
+    const inquiry = await redis.hgetall(`ppob_inquiry:${tr_id}`);
+    if (!inquiry || inquiry.userId !== user.id) {
+      return NextResponse.json({ success: false, msg: 'Data inquiry tidak valid atau sudah kadaluarsa' });
+    }
+
+    const sellPrice = Number(inquiry.selling_price) + PROFIT;
+
+    try {
+      await deductBalance(user.id, sellPrice);
+    } catch (e) {
+      return NextResponse.json({
+        success: false,
+        msg: 'Saldo tidak cukup',
+        error_code: 'INSUFFICIENT_BALANCE',
+        required: sellPrice,
+      });
+    }
+
+    let result;
+    try {
+      result = await bayarTagihan({ trId: tr_id });
+    } catch (e) {
+      await addBalance(user.id, sellPrice);
+      return NextResponse.json({ success: false, msg: 'Gagal terhubung ke provider' });
+    }
+
+    const tx = result?.data;
+    const isSuccess = tx?.response_code === '00';
+    const isPending = tx?.response_code === '39' || tx?.response_code === '05' || tx?.response_code === '201';
+
+    // Kembalikan saldo jika gagal (bukan pending)
+    if (!isSuccess && !isPending) {
+      await addBalance(user.id, sellPrice);
+    }
+
+    const refId = inquiry.ref_id || generateRefId('PAY');
+
+    await redis.hset(`ppob:${refId}`, {
+      userId: user.id,
+      ref_id: refId,
+      tr_id: String(tr_id),
+      sku_code: inquiry.sku_code || '',
+      customer_no: inquiry.customer_no || '',
+      tr_name: tx?.tr_name || inquiry.tr_name || '',
+      sell_price: sellPrice,
+      nominal: tx?.nominal || inquiry.nominal || 0,
+      admin: tx?.admin || inquiry.admin || 0,
+      price: tx?.price || 0,
+      noref: tx?.noref || '',
+      status: isSuccess ? 'Sukses' : isPending ? 'Pending' : 'Gagal',
+      rc: tx?.response_code || '',
+      message: tx?.message || '',
+      type: 'pascabayar',
+      timestamp: Date.now(),
+    });
+    await redis.lpush(`history_ppob:${user.id}`, `ppob:${refId}`);
+
+    return NextResponse.json({
+      success: isSuccess,
+      status: isSuccess ? 'Sukses' : isPending ? 'Pending' : 'Gagal',
+      ref_id: refId,
+      message: tx?.message || '',
+      rc: tx?.response_code || '',
+      data: tx,
+    });
+  }
+
+  // ── Cek Status Transaksi PPOB ─────────────────────────────────────────────
+  if (endpoint === 'ppob_cek_status') {
+    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+
+    const { ref_id } = payload;
+    if (!ref_id) {
+      return NextResponse.json({ success: false, msg: 'ref_id wajib diisi' });
+    }
+
+    // Pastikan transaksi milik user ini
+    const stored = await redis.hgetall(`ppob:${ref_id}`);
+    if (!stored || stored.userId !== user.id) {
+      return NextResponse.json({ success: false, msg: 'Transaksi tidak ditemukan' });
+    }
+
+    try {
+      const result = await cekStatusTransaksi({ refId: ref_id });
+      const tx = result?.data;
+
+      const newStatus = tx?.response_code === '00' ? 'Sukses'
+        : (tx?.response_code === '39' || tx?.response_code === '05' || tx?.response_code === '201') ? 'Pending'
+        : 'Gagal';
+
+      if (stored.status !== newStatus) {
+        const updates = { status: newStatus, rc: tx?.response_code || '', message: tx?.message || '' };
+
+        // Kembalikan saldo jika sekarang Gagal dan belum pernah di-refund
+        if (newStatus === 'Gagal' && stored.sell_price && !stored.refunded) {
+          await addBalance(user.id, Number(stored.sell_price));
+          updates.refunded = '1';
+        }
+        await redis.hset(`ppob:${ref_id}`, updates);
+      }
+
+      return NextResponse.json({ success: true, status: newStatus, data: tx });
+    } catch (e) {
+      return NextResponse.json({ success: false, msg: 'Gagal mengecek status transaksi' });
+    }
+  }
+
+  // ── History Transaksi PPOB ────────────────────────────────────────────────
+  if (endpoint === 'ppob_history') {
+    if (!user) return NextResponse.json({ success: false, msg: 'Login dulu' }, { status: 401 });
+
+    const keys = await redis.lrange(`history_ppob:${user.id}`, 0, 49);
+    if (!keys || keys.length === 0) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
+    const data = await Promise.all(
+      keys.map(async k => {
+        const item = await redis.hgetall(k);
+        if (!item) return null;
+        const ref_id = k.replace('ppob:', '');
+
+        // Auto-refresh status Pending
+        if (item.status === 'Pending' && item.ref_id) {
+          try {
+            const result = await cekStatusTransaksi({ refId: item.ref_id });
+            const tx = result?.data;
+            if (tx?.response_code === '00') {
+              await redis.hset(k, { status: 'Sukses', rc: '00', message: tx.message || '' });
+              item.status = 'Sukses';
+            } else if (tx?.response_code && tx.response_code !== '39' && tx.response_code !== '05' && tx.response_code !== '201') {
+              if (item.sell_price && !item.refunded) {
+                await addBalance(user.id, Number(item.sell_price));
+                await redis.hset(k, { refunded: '1' });
+              }
+              await redis.hset(k, { status: 'Gagal', rc: tx.response_code });
+              item.status = 'Gagal';
+            }
+          } catch (e) { /* biarkan status lama */ }
+        }
+
+        return { ...item, ref_id };
+      })
+    );
+
+    return NextResponse.json({ success: true, data: data.filter(Boolean) });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
 
   return NextResponse.json({ success: false, msg: 'Endpoint tidak dikenal' });
 }
